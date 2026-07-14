@@ -40,7 +40,7 @@ entry points — pick the one that matches your starting question:
       :link: methods_index
       :link-type: doc
 
-      Algorithm-centric examples — DAgger, RECAP, DSRL, IQL offline RL, sim-real co-training, MLP / SAC-Flow.
+      Algorithm-centric examples — DAgger, RECAP, STEAM, IQL offline RL, sim-real co-training, MLP / SAC-Flow.
 
 Beyond embodiment:
 

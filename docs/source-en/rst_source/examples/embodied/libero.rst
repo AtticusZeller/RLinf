@@ -42,7 +42,7 @@ RL-finetune a VLA on the original LIBERO suites; OpenVLA-OFT + GRPO reaches ~98�
    .. grid-item-card:: Algorithms
       :text-align: center
 
-      PPO · GRPO · DSRL · DAgger
+      PPO · GRPO · DAgger
 
    .. grid-item-card:: Tasks
       :text-align: center

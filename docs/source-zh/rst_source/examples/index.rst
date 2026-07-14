@@ -37,7 +37,7 @@
       :link: methods_index
       :link-type: doc
 
-      以训练算法为主线 —— DAgger、RECAP、DSRL、IQL 离线 RL、仿真-真机协同训练、MLP / SAC-Flow。
+      以训练算法为主线 —— DAgger、RECAP、STEAM、IQL 离线 RL、仿真-真机协同训练、MLP / SAC-Flow。
 
 具身之外：
 

@@ -35,7 +35,7 @@ Embodied Intelligence
 
 - Supported RL with the :doc:`RoboCasa benchmark <../examples/embodied/robocasa>`.
 
-- Supported DSRL (Diffusion Steering via Reinforcement Learning) for pi0 with :doc:`DSRL <../examples/embodied/dsrl>`.
+- Supported DSRL (Diffusion Steering via Reinforcement Learning) for pi0.
 
 - Supported SAC training for flow matching policy with :doc:`SAC-Flow <../examples/embodied/sac_flow>`.
 

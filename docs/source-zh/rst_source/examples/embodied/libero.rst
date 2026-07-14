@@ -41,7 +41,7 @@ MuJoCo 中完成语言条件下的操作任务——抓取放置、叠放、开�
    .. grid-item-card:: 算法
       :text-align: center
 
-      PPO · GRPO · DSRL · DAgger
+      PPO · GRPO · DAgger
 
    .. grid-item-card:: 任务
       :text-align: center

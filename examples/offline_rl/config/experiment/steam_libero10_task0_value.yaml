@@ -1,0 +1,33 @@
+# Usage:
+#   bash examples/offline_rl/advantage_labeling/steam/run_steam_sft.sh \
+#     steam_value_model_sft +experiment@_global_=steam_libero10_task0_value
+
+runner:
+  logger:
+    experiment_name: value
+  max_epochs: -1
+  max_steps: 16000
+  val_check_interval: -1
+  save_interval: 16000
+
+data:
+  train_data_paths:
+    - dataset_path: ${oc.env:RLINF_RECAP_DATA_ROOT,/mnt/data/atticux/rlinf/datasets/RECAP-Libero10-Task0-48succ-Data}/libero10_task0_sft
+      type: sft
+    - dataset_path: ${oc.env:RLINF_RECAP_DATA_ROOT,/mnt/data/atticux/rlinf/datasets/RECAP-Libero10-Task0-48succ-Data}/libero10_task0_train
+      type: rollout
+  camera_keys:
+    - image
+    - wrist_image
+  k: 32
+  only_success: false
+  seed: ${oc.decode:${oc.env:RLINF_EXPERIMENT_SEED,0}}
+
+actor:
+  seed: ${oc.decode:${oc.env:RLINF_EXPERIMENT_SEED,0}}
+  model:
+    vision_repo_id: ${oc.env:RLINF_STEAM_SIGLIP_PATH,/mnt/data/atticux/rlinf/models/siglip-so400m-patch14-384}
+    language_repo_id: ${oc.env:RLINF_GEMMA_PATH,/mnt/data/atticux/rlinf/models/gemma-3-270m}
+    tokenizer_path: ${oc.env:RLINF_GEMMA_PATH,/mnt/data/atticux/rlinf/models/gemma-3-270m}
+    ensemble_size: 3
+    ensemble_head_seed_base: ${oc.decode:${oc.env:RLINF_EXPERIMENT_SEED,0}}

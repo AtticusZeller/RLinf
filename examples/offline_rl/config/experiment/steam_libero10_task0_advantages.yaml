@@ -1,0 +1,23 @@
+# Usage:
+#   bash examples/offline_rl/advantage_labeling/steam/process/run_compute_advantages_ensemble.sh \
+#     steam_compute_advantages_ensemble --nproc 4 \
+#     +experiment@_global_=steam_libero10_task0_advantages \
+#     advantage.value_checkpoint=/path/to/value/checkpoint
+
+advantage:
+  value_checkpoint: ???
+  label_mode: quantile
+  rollout_quantile: 0.3
+  expert_quantile: 0.8
+  tag: steam_task0_seed${oc.env:RLINF_EXPERIMENT_SEED,0}_k32_e3_q30
+
+data:
+  k: 32
+  camera_keys:
+    - image
+    - wrist_image
+  train_data_paths:
+    - dataset_path: ${oc.env:RLINF_RECAP_DATA_ROOT,/mnt/data/atticux/rlinf/datasets/RECAP-Libero10-Task0-48succ-Data}/libero10_task0_sft
+      type: sft
+    - dataset_path: ${oc.env:RLINF_RECAP_DATA_ROOT,/mnt/data/atticux/rlinf/datasets/RECAP-Libero10-Task0-48succ-Data}/libero10_task0_train
+      type: rollout

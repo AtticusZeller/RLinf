@@ -1,0 +1,27 @@
+# Usage:
+#   bash examples/offline_rl/policy_optimization/cfg_rl/run_cfg_rl.sh \
+#     cfg_rl_openpi +experiment@_global_=steam_libero10_task0_cfg
+
+runner:
+  logger:
+    experiment_name: policy
+  max_epochs: -1
+  max_steps: 30000
+  val_check_interval: -1
+  save_interval: 30000
+
+data:
+  advantage_tag: steam_task0_seed${oc.env:RLINF_EXPERIMENT_SEED,0}_k32_e3_q30
+  seed: ${oc.decode:${oc.env:RLINF_EXPERIMENT_SEED,0}}
+  train_data_paths:
+    - dataset_path: ${oc.env:RLINF_RECAP_DATA_ROOT,/mnt/data/atticux/rlinf/datasets/RECAP-Libero10-Task0-48succ-Data}/libero10_task0_sft
+      type: sft
+      weight: 1.0
+    - dataset_path: ${oc.env:RLINF_RECAP_DATA_ROOT,/mnt/data/atticux/rlinf/datasets/RECAP-Libero10-Task0-48succ-Data}/libero10_task0_train
+      type: rollout
+      weight: 1.0
+
+actor:
+  seed: ${oc.decode:${oc.env:RLINF_EXPERIMENT_SEED,0}}
+  model:
+    model_path: ${oc.env:RLINF_PI05_MODEL_PATH,/mnt/data/atticux/rlinf/models/RLinf-Pi05-LIBERO-SFT}

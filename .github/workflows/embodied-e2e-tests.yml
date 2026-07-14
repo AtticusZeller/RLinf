@@ -728,14 +728,6 @@ jobs:
           cp -r /workspace/dataset/maniskill_assets/assets ${REPO_PATH}/rlinf/envs/maniskill/
           bash tests/e2e_tests/embodied/run_async.sh maniskill_async_ppo_openpi
 
-      - name: Libero-Spatial DSRL PPO test
-        timeout-minutes: 20
-        run: |
-          unset PYTHONPATH
-          export REPO_PATH=$(pwd)
-          source .venv/bin/activate
-          bash tests/e2e_tests/embodied/run.sh libero_spatial_dsrl_openpi
-
       - name: Maniskill PPO Co-Training Pi05 test
         timeout-minutes: 20
         run: |

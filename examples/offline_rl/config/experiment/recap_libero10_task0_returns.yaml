@@ -1,0 +1,15 @@
+# Usage:
+#   bash examples/offline_rl/advantage_labeling/recap/process/run_compute_returns.sh \
+#     recap_compute_returns +experiment@_global_=recap_libero10_task0_returns
+
+data:
+  train_data_paths:
+    - dataset_path: ${oc.env:RLINF_RECAP_DATA_ROOT,/mnt/data/atticux/rlinf/datasets/RECAP-Libero10-Task0-48succ-Data}/libero10_task0_sft
+      type: sft
+    - dataset_path: ${oc.env:RLINF_RECAP_DATA_ROOT,/mnt/data/atticux/rlinf/datasets/RECAP-Libero10-Task0-48succ-Data}/libero10_task0_train
+      type: rollout
+  dataset_type: sft
+  gamma: 1.0
+  failure_reward: -300.0
+  tag: recap_task0_seed${oc.env:RLINF_EXPERIMENT_SEED,0}_returns
+  num_workers: 128

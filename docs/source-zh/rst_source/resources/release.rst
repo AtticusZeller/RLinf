@@ -35,7 +35,7 @@ RLinf v0.2 聚焦两个核心方向：真实世界强化学习（Real-World RL�
 
 - 支持 :doc:`RoboCasa <../examples/embodied/robocasa>` 基准
 
-- 支持 Pi0 的 :doc:`DSRL <../examples/embodied/dsrl>`，即 Diffusion Steering via Reinforcement Learning
+- 支持 Pi0 的 DSRL，即 Diffusion Steering via Reinforcement Learning
 
 - 支持 flow matching policy 的 :doc:`SAC-Flow <../examples/embodied/sac_flow>` 训练
 
