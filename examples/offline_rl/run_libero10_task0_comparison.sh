@@ -49,10 +49,14 @@ export PYOPENGL_PLATFORM="${PYOPENGL_PLATFORM:-egl}"
 export PYTHONPATH="${REPO_PATH}:${PYTHONPATH:-}"
 
 MVP_EXPERIMENT_ROOT="${RLINF_EXPERIMENT_ROOT:-/mnt/data/atticux/rlinf/experiments/recap-steam-libero10-task0-mvp}"
+MEDIUM_EXPERIMENT_ROOT="${RLINF_MEDIUM_EXPERIMENT_ROOT:-/mnt/data/atticux/rlinf/experiments/recap-steam-libero10-task0-medium}"
 FULL_EXPERIMENT_ROOT="${RLINF_FULL_EXPERIMENT_ROOT:-/mnt/data/atticux/rlinf/experiments/recap-steam-libero10-task0-full}"
 export RLINF_RECAP_MVP_DATA_ROOT="${RLINF_RECAP_MVP_DATA_ROOT:-/mnt/data/atticux/rlinf/datasets/RECAP-Libero10-Task0-MVP}"
 MVP_DATA_ARCHIVE_ROOT="${RLINF_RECAP_MVP_DATA_ROOT}"
 MVP_DATA_CACHE_ROOT="${RLINF_RECAP_MVP_CACHE_ROOT:-${HOME}/.cache/rlinf/datasets/RECAP-Libero10-Task0-MVP}"
+export RLINF_RECAP_MEDIUM_DATA_ROOT="${RLINF_RECAP_MEDIUM_DATA_ROOT:-/mnt/data/atticux/rlinf/datasets/RECAP-Libero10-Task0-Medium}"
+MEDIUM_DATA_ARCHIVE_ROOT="${RLINF_RECAP_MEDIUM_DATA_ROOT}"
+MEDIUM_DATA_CACHE_ROOT="${RLINF_RECAP_MEDIUM_CACHE_ROOT:-${HOME}/.cache/rlinf/datasets/RECAP-Libero10-Task0-Medium}"
 export RLINF_RECAP_DATA_ROOT="${RLINF_RECAP_DATA_ROOT:-/mnt/data/atticux/rlinf/datasets/RECAP-Libero10-Task0-48succ-Data}"
 export RLINF_PI05_MODEL_PATH="${RLINF_PI05_MODEL_PATH:-/mnt/data/atticux/rlinf/models/RLinf-Pi05-LIBERO-SFT}"
 export RLINF_RECAP_SIGLIP_PATH="${RLINF_RECAP_SIGLIP_PATH:-/mnt/data/atticux/rlinf/models/siglip2-so400m-patch14-224}"
@@ -126,6 +130,33 @@ sync_mvp_metadata() {
         cp -a "${RLINF_RECAP_MVP_DATA_ROOT}/${dataset}/meta/." \
             "${MVP_DATA_ARCHIVE_ROOT}/${dataset}/meta/"
     done
+}
+
+check_medium_assets() {
+    require_dir "${MVP_DATA_ARCHIVE_ROOT}/libero10_task0_sft"
+    require_dir "${MVP_DATA_ARCHIVE_ROOT}/libero10_task0_eval"
+    require_file "${MEDIUM_DATA_ARCHIVE_ROOT}/libero10_task0_train/meta/subset_manifest.json"
+    check_models
+}
+
+stage_medium_data() {
+    stage_mvp_data
+    if [[ "${RLINF_RECAP_MEDIUM_DATA_ROOT}" == "${MEDIUM_DATA_CACHE_ROOT}" ]]; then
+        return
+    fi
+    require_dir "${MEDIUM_DATA_ARCHIVE_ROOT}/libero10_task0_train"
+    mkdir -p "${MEDIUM_DATA_CACHE_ROOT}"
+    cp -a -u "${MEDIUM_DATA_ARCHIVE_ROOT}/libero10_task0_train" "${MEDIUM_DATA_CACHE_ROOT}/"
+    export RLINF_RECAP_MEDIUM_DATA_ROOT="${MEDIUM_DATA_CACHE_ROOT}"
+}
+
+sync_medium_metadata() {
+    sync_mvp_metadata
+    if [[ "${RLINF_RECAP_MEDIUM_DATA_ROOT}" == "${MEDIUM_DATA_ARCHIVE_ROOT}" ]]; then
+        return
+    fi
+    cp -a "${RLINF_RECAP_MEDIUM_DATA_ROOT}/libero10_task0_train/meta/." \
+        "${MEDIUM_DATA_ARCHIVE_ROOT}/libero10_task0_train/meta/"
 }
 
 check_full_assets() {
@@ -203,6 +234,53 @@ prepare_mvp_assets() {
     copy_from_staging "${stage}" "${RLINF_RECAP_MVP_DATA_ROOT}"
     download_models
     check_mvp_assets
+}
+
+prepare_medium_assets() {
+    local workers="${RLINF_HF_MAX_WORKERS:-4}"
+    local stage="${HF_STAGING_ROOT}/datasets/RECAP-Libero10-Task0-Medium-Source"
+    local source_dir="${stage}/libero10_task0_train"
+    local selection_dir="${stage}/.medium-selection"
+    local manifest="${selection_dir}/manifest.json"
+    local file_list="${selection_dir}/files.txt"
+    local -a selected_files
+
+    check_download_prerequisites
+    prepare_mvp_assets
+    hf download RLinf/RECAP-Libero10-Task0-48succ-Data \
+        --repo-type dataset \
+        --include 'libero10_task0_train/meta/**' \
+        --max-workers "${workers}" \
+        --local-dir "${stage}"
+    mkdir -p "${selection_dir}"
+    python "${REPO_PATH}/toolkits/lerobot/subset_lerobot_dataset.py" select \
+        --source-dir "${source_dir}" \
+        --count 256 \
+        --seed 0 \
+        --source-repo RLinf/RECAP-Libero10-Task0-48succ-Data \
+        --manifest "${manifest}" \
+        --file-list "${file_list}"
+    mapfile -t selected_files < "${file_list}"
+    hf download RLinf/RECAP-Libero10-Task0-48succ-Data \
+        "${selected_files[@]}" \
+        --repo-type dataset \
+        --max-workers "${workers}" \
+        --local-dir "${stage}"
+
+    if [[ ! -f "${MEDIUM_DATA_ARCHIVE_ROOT}/libero10_task0_train/meta/subset_manifest.json" ]]; then
+        if [[ -e "${MEDIUM_DATA_ARCHIVE_ROOT}/libero10_task0_train" ]]; then
+            echo "Incomplete medium dataset already exists: ${MEDIUM_DATA_ARCHIVE_ROOT}/libero10_task0_train" >&2
+            exit 1
+        fi
+        mkdir -p "${MEDIUM_DATA_ARCHIVE_ROOT}"
+        python "${REPO_PATH}/toolkits/lerobot/subset_lerobot_dataset.py" materialize \
+            --source-dir "${source_dir}" \
+            --output-dir "${MEDIUM_DATA_ARCHIVE_ROOT}/libero10_task0_train" \
+            --manifest "${manifest}"
+    else
+        echo "Reusing medium rollout subset: ${MEDIUM_DATA_ARCHIVE_ROOT}/libero10_task0_train"
+    fi
+    check_medium_assets
 }
 
 prepare_full_assets() {
@@ -323,6 +401,111 @@ run_steam_mvp() {
     require_file "${policy_checkpoint}"
 }
 
+run_recap_medium() {
+    local advantage_sft
+    local advantage_train
+    local seed="$1"
+    local nproc
+    local policy_checkpoint
+    local run_root
+    local value_checkpoint
+
+    validate_seed "${seed}"
+    stage_medium_data
+    check_medium_assets
+    export RLINF_EXPERIMENT_SEED="${seed}"
+    nproc="$(detect_nproc)"
+    run_root="${MEDIUM_EXPERIMENT_ROOT}/seed-${seed}/recap"
+    mkdir -p "${run_root}"
+
+    bash "${SCRIPT_DIR}/advantage_labeling/recap/process/run_compute_returns.sh" \
+        recap_compute_returns \
+        +experiment@_global_=recap_libero10_task0_medium_returns
+    value_checkpoint="${run_root}/recap-medium-value/checkpoints/global_step_2000/actor"
+    if [[ ! -d "${value_checkpoint}" ]]; then
+        bash "${SCRIPT_DIR}/advantage_labeling/recap/run_value_sft.sh" \
+            recap_value_model_sft \
+            +experiment@_global_=recap_libero10_task0_medium_value \
+            "runner.logger.log_path=${run_root}"
+    else
+        echo "Reusing RECAP medium value checkpoint: ${value_checkpoint}"
+    fi
+    require_dir "${value_checkpoint}"
+    advantage_sft="${RLINF_RECAP_MVP_DATA_ROOT}/libero10_task0_sft/meta/advantages_recap_task0_medium_seed${seed}_q30.parquet"
+    advantage_train="${RLINF_RECAP_MEDIUM_DATA_ROOT}/libero10_task0_train/meta/advantages_recap_task0_medium_seed${seed}_q30.parquet"
+    if [[ ! -f "${advantage_sft}" || ! -f "${advantage_train}" ]]; then
+        bash "${SCRIPT_DIR}/advantage_labeling/recap/process/run_compute_advantages.sh" \
+            recap_compute_advantages \
+            --nproc "${nproc}" \
+            +experiment@_global_=recap_libero10_task0_medium_advantages \
+            "advantage.value_checkpoint=${value_checkpoint}"
+    else
+        echo "Reusing RECAP medium advantage sidecars for seed ${seed}."
+    fi
+    sync_medium_metadata
+    policy_checkpoint="${run_root}/recap-medium-policy/checkpoints/global_step_1000/actor/model_state_dict/full_weights.pt"
+    if [[ ! -f "${policy_checkpoint}" ]]; then
+        bash "${SCRIPT_DIR}/policy_optimization/cfg_rl/run_cfg_rl.sh" \
+            cfg_rl_openpi \
+            +experiment@_global_=recap_libero10_task0_medium_cfg \
+            "runner.logger.log_path=${run_root}"
+    else
+        echo "Reusing RECAP medium policy checkpoint: ${policy_checkpoint}"
+    fi
+    require_file "${policy_checkpoint}"
+}
+
+run_steam_medium() {
+    local advantage_sft
+    local advantage_train
+    local seed="$1"
+    local nproc
+    local policy_checkpoint
+    local run_root
+    local value_checkpoint
+
+    validate_seed "${seed}"
+    stage_medium_data
+    check_medium_assets
+    export RLINF_EXPERIMENT_SEED="${seed}"
+    nproc="$(detect_nproc)"
+    run_root="${MEDIUM_EXPERIMENT_ROOT}/seed-${seed}/steam"
+    mkdir -p "${run_root}"
+
+    value_checkpoint="${run_root}/steam-medium-value/checkpoints/global_step_500/actor"
+    if [[ ! -d "${value_checkpoint}" ]]; then
+        bash "${SCRIPT_DIR}/advantage_labeling/steam/run_steam_sft.sh" \
+            steam_value_model_sft \
+            +experiment@_global_=steam_libero10_task0_medium_value \
+            "runner.logger.log_path=${run_root}"
+    else
+        echo "Reusing STEAM medium value checkpoint: ${value_checkpoint}"
+    fi
+    require_dir "${value_checkpoint}"
+    advantage_sft="${RLINF_RECAP_MVP_DATA_ROOT}/libero10_task0_sft/meta/advantages_steam_task0_medium_seed${seed}_k32_e3_q30.parquet"
+    advantage_train="${RLINF_RECAP_MEDIUM_DATA_ROOT}/libero10_task0_train/meta/advantages_steam_task0_medium_seed${seed}_k32_e3_q30.parquet"
+    if [[ ! -f "${advantage_sft}" || ! -f "${advantage_train}" ]]; then
+        bash "${SCRIPT_DIR}/advantage_labeling/steam/process/run_compute_advantages_ensemble.sh" \
+            steam_compute_advantages_ensemble \
+            --nproc "${nproc}" \
+            +experiment@_global_=steam_libero10_task0_medium_advantages \
+            "advantage.value_checkpoint=${value_checkpoint}"
+    else
+        echo "Reusing STEAM medium advantage sidecars for seed ${seed}."
+    fi
+    sync_medium_metadata
+    policy_checkpoint="${run_root}/steam-medium-policy/checkpoints/global_step_1000/actor/model_state_dict/full_weights.pt"
+    if [[ ! -f "${policy_checkpoint}" ]]; then
+        bash "${SCRIPT_DIR}/policy_optimization/cfg_rl/run_cfg_rl.sh" \
+            cfg_rl_openpi \
+            +experiment@_global_=steam_libero10_task0_medium_cfg \
+            "runner.logger.log_path=${run_root}"
+    else
+        echo "Reusing STEAM medium policy checkpoint: ${policy_checkpoint}"
+    fi
+    require_file "${policy_checkpoint}"
+}
+
 run_recap_full() {
     local seed="$1"
     local nproc
@@ -386,6 +569,8 @@ run_eval() {
     local method="$1"
     local seed="$2"
     local profile="${3:-mvp}"
+    local checkpoint_step="${4:-}"
+    local training_root
     local run_root
     local config_name
     local policy_checkpoint
@@ -400,6 +585,29 @@ run_eval() {
         elif [[ "${method}" == "recap" || "${method}" == "steam" ]]; then
             config_name="libero_10_task0_mvp_cfg_pi05_eval"
             policy_checkpoint="${run_root}/policy/checkpoints/global_step_200/actor/model_state_dict/full_weights.pt"
+            require_file "${policy_checkpoint}"
+        else
+            echo "Method must be baseline, recap, or steam; got: ${method}" >&2
+            exit 2
+        fi
+    elif [[ "${profile}" == "medium" ]]; then
+        check_medium_assets
+        if [[ "${method}" == "baseline" ]]; then
+            [[ -z "${checkpoint_step}" ]] || {
+                echo "Medium baseline evaluation does not accept a checkpoint step." >&2
+                exit 2
+            }
+            run_root="${MEDIUM_EXPERIMENT_ROOT}/seed-${seed}/baseline"
+            config_name="libero_10_task0_mvp_openpi_pi05_eval"
+        elif [[ "${method}" == "recap" || "${method}" == "steam" ]]; then
+            if [[ "${checkpoint_step}" != "500" && "${checkpoint_step}" != "1000" ]]; then
+                echo "Medium checkpoint step must be 500 or 1000, got: ${checkpoint_step}" >&2
+                exit 2
+            fi
+            training_root="${MEDIUM_EXPERIMENT_ROOT}/seed-${seed}/${method}"
+            run_root="${MEDIUM_EXPERIMENT_ROOT}/seed-${seed}/${method}_step${checkpoint_step}"
+            config_name="libero_10_task0_mvp_cfg_pi05_eval"
+            policy_checkpoint="${training_root}/${method}-medium-policy/checkpoints/global_step_${checkpoint_step}/actor/model_state_dict/full_weights.pt"
             require_file "${policy_checkpoint}"
         else
             echo "Method must be baseline, recap, or steam; got: ${method}" >&2
@@ -424,6 +632,7 @@ run_eval() {
     local eval_args=(
         libero "${config_name}"
         "runner.logger.log_path=${run_root}/eval"
+        "runner.logger.experiment_name=${method}-${profile}${checkpoint_step:+-step${checkpoint_step}}-eval"
     )
     if [[ -n "${policy_checkpoint:-}" ]]; then
         eval_args+=("runner.ckpt_path=${policy_checkpoint}")
@@ -449,6 +658,15 @@ summarize_full() {
         --methods recap steam
 }
 
+summarize_medium() {
+    python "${SCRIPT_DIR}/summarize_libero10_task0.py" \
+        "${MEDIUM_EXPERIMENT_ROOT}" \
+        --seeds 0 \
+        --baseline-seed 0 \
+        --expected-trajectories 100 \
+        --methods baseline recap_step500 recap_step1000 steam_step500 steam_step1000
+}
+
 run_mvp() {
     run_eval baseline 0 mvp
     run_recap_mvp 0
@@ -461,6 +679,17 @@ run_remaining_mvp() {
     run_steam_mvp 0
     run_eval steam 0 mvp
     summarize_mvp
+}
+
+run_medium() {
+    run_eval baseline 0 medium
+    run_recap_medium 0
+    run_eval recap 0 medium 500
+    run_eval recap 0 medium 1000
+    run_steam_medium 0
+    run_eval steam 0 medium 500
+    run_eval steam 0 medium 1000
+    summarize_medium
 }
 
 run_full() {
@@ -486,14 +715,23 @@ Usage:
   run_libero10_task0_comparison.sh continue-mvp
   run_libero10_task0_comparison.sh summarize
 
+Medium experiment commands:
+  run_libero10_task0_comparison.sh prepare-medium
+  run_libero10_task0_comparison.sh recap-medium <seed>
+  run_libero10_task0_comparison.sh steam-medium <seed>
+  run_libero10_task0_comparison.sh eval-medium <baseline|recap|steam> <seed> [500|1000]
+  run_libero10_task0_comparison.sh medium
+  run_libero10_task0_comparison.sh summarize-medium
+
 Explicit full experiment commands:
   run_libero10_task0_comparison.sh prepare-full
   run_libero10_task0_comparison.sh full
   run_libero10_task0_comparison.sh summarize-full
 
 Environment overrides:
-  RLINF_EXPERIMENT_ROOT, RLINF_FULL_EXPERIMENT_ROOT,
+  RLINF_EXPERIMENT_ROOT, RLINF_MEDIUM_EXPERIMENT_ROOT, RLINF_FULL_EXPERIMENT_ROOT,
   RLINF_RECAP_MVP_DATA_ROOT, RLINF_RECAP_MVP_CACHE_ROOT,
+  RLINF_RECAP_MEDIUM_DATA_ROOT, RLINF_RECAP_MEDIUM_CACHE_ROOT,
   RLINF_RECAP_DATA_ROOT, RLINF_PI05_MODEL_PATH,
   RLINF_RECAP_SIGLIP_PATH, RLINF_STEAM_SIGLIP_PATH, RLINF_GEMMA_PATH,
   RLINF_NPROC, RLINF_HF_MAX_WORKERS, RLINF_HF_STAGING_ROOT,
@@ -509,6 +747,10 @@ case "${command_name}" in
         ;;
     prepare-full)
         prepare_full_assets
+        ;;
+    prepare-medium)
+        [[ $# -eq 1 ]] || { usage; exit 2; }
+        prepare_medium_assets
         ;;
     baseline)
         [[ $# -eq 1 ]] || { usage; exit 2; }
@@ -537,6 +779,31 @@ case "${command_name}" in
     summarize)
         [[ $# -eq 1 ]] || { usage; exit 2; }
         summarize_mvp
+        ;;
+    recap-medium)
+        [[ $# -eq 2 ]] || { usage; exit 2; }
+        run_recap_medium "$2"
+        ;;
+    steam-medium)
+        [[ $# -eq 2 ]] || { usage; exit 2; }
+        run_steam_medium "$2"
+        ;;
+    eval-medium)
+        if [[ "${2:-}" == "baseline" ]]; then
+            [[ $# -eq 3 ]] || { usage; exit 2; }
+            run_eval "$2" "$3" medium
+        else
+            [[ $# -eq 4 ]] || { usage; exit 2; }
+            run_eval "$2" "$3" medium "$4"
+        fi
+        ;;
+    medium)
+        [[ $# -eq 1 ]] || { usage; exit 2; }
+        run_medium
+        ;;
+    summarize-medium)
+        [[ $# -eq 1 ]] || { usage; exit 2; }
+        summarize_medium
         ;;
     full)
         [[ $# -eq 1 ]] || { usage; exit 2; }

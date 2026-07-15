@@ -1,0 +1,27 @@
+runner:
+  logger:
+    experiment_name: steam-medium-policy
+  max_epochs: -1
+  max_steps: 1000
+  val_check_interval: -1
+  save_interval: 500
+
+data:
+  advantage_tag: steam_task0_medium_seed${oc.env:RLINF_EXPERIMENT_SEED,0}_k32_e3_q30
+  seed: ${oc.decode:${oc.env:RLINF_EXPERIMENT_SEED,0}}
+  train_data_paths:
+    - dataset_path: ${oc.env:RLINF_RECAP_MVP_DATA_ROOT}/libero10_task0_sft
+      type: sft
+      weight: 1.0
+    - dataset_path: ${oc.env:RLINF_RECAP_MEDIUM_DATA_ROOT}/libero10_task0_train
+      type: rollout
+      weight: 1.0
+
+actor:
+  seed: ${oc.decode:${oc.env:RLINF_EXPERIMENT_SEED,0}}
+  global_batch_size: 256
+  model:
+    model_path: ${oc.env:RLINF_PI05_MODEL_PATH}
+  optim:
+    lr_warmup_steps: 100
+    total_training_steps: 1000

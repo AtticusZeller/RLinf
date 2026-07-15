@@ -82,6 +82,36 @@ baseline 约 10 分钟，RECAP 约 2–3 小时，STEAM 约 1–1.5 小时。首
 RECAP 高 5 pp；但二者都未超过 SFT baseline。该结果只证明代码与迁移链路可用，
 不能证明 100/1,000-step value + 200-step CFG 已获得算法收益。
 
+## RECAP / STEAM 中等预算实验
+
+中等实验使用 256 条确定性分层抽样 rollout、单 seed，并评测 CFG step
+500/1,000。完整方案和运行结果统一维护在 ``docs/experiment-log.md``。
+
+```bash
+cd /root/RLinf
+
+# 下载轻量元数据，生成抽样清单，只下载选中的 parquet 和双相机视频。
+bash examples/offline_rl/run_libero10_task0_comparison.sh prepare-medium
+
+# 串行运行 baseline、RECAP、STEAM、4 个 checkpoint 评测与汇总。
+tmux new-session -d -s rlinf-recap-steam-medium \
+  'cd /root/RLinf && bash examples/offline_rl/run_libero10_task0_comparison.sh medium 2>&1 | tee /tmp/rlinf-recap-steam-medium.log'
+
+tmux capture-pane -pt rlinf-recap-steam-medium -S -80
+```
+
+也可以分阶段幂等运行：
+
+```bash
+bash examples/offline_rl/run_libero10_task0_comparison.sh recap-medium 0
+bash examples/offline_rl/run_libero10_task0_comparison.sh eval-medium recap 0 500
+bash examples/offline_rl/run_libero10_task0_comparison.sh eval-medium recap 0 1000
+bash examples/offline_rl/run_libero10_task0_comparison.sh steam-medium 0
+bash examples/offline_rl/run_libero10_task0_comparison.sh eval-medium steam 0 500
+bash examples/offline_rl/run_libero10_task0_comparison.sh eval-medium steam 0 1000
+bash examples/offline_rl/run_libero10_task0_comparison.sh summarize-medium
+```
+
 ### 4. 显式运行完整实验
 
 下面的命令会下载约 87 GB 数据并运行三 seed 长训练，不属于默认 MVP：

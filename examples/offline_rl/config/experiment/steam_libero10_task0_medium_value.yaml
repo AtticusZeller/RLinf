@@ -1,0 +1,34 @@
+runner:
+  logger:
+    experiment_name: steam-medium-value
+  max_epochs: -1
+  max_steps: 500
+  val_check_interval: -1
+  save_interval: 500
+
+data:
+  train_data_paths:
+    - dataset_path: ${oc.env:RLINF_RECAP_MVP_DATA_ROOT}/libero10_task0_sft
+      type: sft
+    - dataset_path: ${oc.env:RLINF_RECAP_MEDIUM_DATA_ROOT}/libero10_task0_train
+      type: rollout
+  camera_keys: [image, wrist_image]
+  k: 32
+  only_success: false
+  seed: ${oc.decode:${oc.env:RLINF_EXPERIMENT_SEED,0}}
+  train_num_workers: 2
+
+actor:
+  seed: ${oc.decode:${oc.env:RLINF_EXPERIMENT_SEED,0}}
+  micro_batch_size: 1
+  global_batch_size: 4
+  model:
+    vision_repo_id: ${oc.env:RLINF_STEAM_SIGLIP_PATH}
+    language_repo_id: ${oc.env:RLINF_GEMMA_PATH}
+    tokenizer_path: ${oc.env:RLINF_GEMMA_PATH}
+    ensemble_size: 3
+    ensemble_head_seed_base: ${oc.decode:${oc.env:RLINF_EXPERIMENT_SEED,0}}
+    use_gradient_checkpointing: false
+  optim:
+    lr_warmup_steps: 50
+    total_training_steps: 500

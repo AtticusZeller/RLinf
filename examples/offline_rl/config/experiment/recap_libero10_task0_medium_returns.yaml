@@ -1,0 +1,11 @@
+data:
+  train_data_paths:
+    - dataset_path: ${oc.env:RLINF_RECAP_MVP_DATA_ROOT}/libero10_task0_sft
+      type: sft
+    - dataset_path: ${oc.env:RLINF_RECAP_MEDIUM_DATA_ROOT}/libero10_task0_train
+      type: rollout
+  dataset_type: sft
+  gamma: 1.0
+  failure_reward: -300.0
+  tag: recap_task0_medium_seed${oc.env:RLINF_EXPERIMENT_SEED,0}_returns
+  num_workers: 16

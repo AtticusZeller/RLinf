@@ -1,0 +1,23 @@
+advantage:
+  value_checkpoint: ???
+  batch_size: 64
+  num_dataloader_workers_per_gpu: 2
+  positive_quantile: 0.3
+  tag: recap_task0_medium_seed${oc.env:RLINF_EXPERIMENT_SEED,0}_q30
+  returns_tag: recap_task0_medium_seed${oc.env:RLINF_EXPERIMENT_SEED,0}_returns
+  model:
+    tokenizer_path: ${oc.env:RLINF_GEMMA_PATH}
+    siglip_path: ${oc.env:RLINF_RECAP_SIGLIP_PATH}
+    gemma3_path: ${oc.env:RLINF_GEMMA_PATH}
+
+data:
+  model_type: pi05
+  train_data_paths:
+    - dataset_path: ${oc.env:RLINF_RECAP_MVP_DATA_ROOT}/libero10_task0_sft
+      robot_type: libero
+      type: sft
+      weight: 1.0
+    - dataset_path: ${oc.env:RLINF_RECAP_MEDIUM_DATA_ROOT}/libero10_task0_train
+      robot_type: libero
+      type: rollout
+      weight: 1.0

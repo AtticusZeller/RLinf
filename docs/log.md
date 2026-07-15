@@ -4,6 +4,19 @@
 
 <!-- 每个任务通过全部必要验证后，在本行下方追加一条 -->
 
+## 2026-07-15 · RECAP / STEAM 中等预算实验入口
+
+- 新增专有 ``docs/experiment-log.md``，分离实验假设、运行证据和算法结论；
+  Medium 使用单 seed、256 条确定性分层 rollout、两档 CFG checkpoint 与
+  5 组各 100 回合评测。
+- 新增 LeRobot 子集工具、7 份 Medium YAML 和统一 launcher 子命令；重要
+  数据、checkpoint 与汇总写入 ``/mnt/data/atticux/rlinf/``，训练默认同步
+  TensorBoard 与 W&B。
+- 真实准备并验证 5.0 GB 数据：125 条成功、131 条失败、97,338 frames、
+  256 个 parquet、512 个视频；LeRobot 元数据可正常加载。
+- 已通过 Ruff、5 个 pytest、7 份 YAML 解析、7 组 Hydra 组合、shell 语法、
+  launcher 参数检查以及真实数据首尾重编号检查。
+
 ## 2026-07-15 · RECAP / STEAM 默认启用 W&B
 
 - RECAP value、STEAM value、共享 CFG 与三份 LIBERO Task 0 评测配置默认同时启用 TensorBoard 和 W&B，统一写入 W&B 项目 ``rlinf``。

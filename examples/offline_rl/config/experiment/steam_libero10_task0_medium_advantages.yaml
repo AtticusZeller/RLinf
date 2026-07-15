@@ -1,0 +1,17 @@
+advantage:
+  value_checkpoint: ???
+  batch_size: 64
+  num_dataloader_workers_per_gpu: 2
+  label_mode: quantile
+  rollout_quantile: 0.3
+  expert_quantile: 0.8
+  tag: steam_task0_medium_seed${oc.env:RLINF_EXPERIMENT_SEED,0}_k32_e3_q30
+
+data:
+  k: 32
+  camera_keys: [image, wrist_image]
+  train_data_paths:
+    - dataset_path: ${oc.env:RLINF_RECAP_MVP_DATA_ROOT}/libero10_task0_sft
+      type: sft
+    - dataset_path: ${oc.env:RLINF_RECAP_MEDIUM_DATA_ROOT}/libero10_task0_train
+      type: rollout

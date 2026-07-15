@@ -4,6 +4,14 @@
 
 <!-- 新条目追加到本行下方，保持最新在最上 -->
 
+## RECAP / STEAM · LIBERO-10 Task 0 Medium
+
+- 新建 ``docs/experiment-log.md``，集中记录实验假设、配置、W&B、产物、结果与结论；``docs/log.md`` 继续只记录已验证的开发任务。
+- 使用 30 条 SFT 与按成功/失败比例、seed 0 确定性抽取的 256 条 rollout；保存原 episode 映射清单。
+- RECAP 使用 2,000-step value，STEAM 使用 500-step ensemble value；两者 CFG 均为 1,000 steps。
+- 对 baseline 与两种方法的 CFG step 500/1,000 各评测 100 回合。若两种方法都未超过 baseline 且 500→1,000 没有上升，则停止，不进入 full。
+- 数据、checkpoint 与结果写入 ``/mnt/data/atticux/rlinf/``，训练与评测同步 W&B 项目 ``rlinf``。
+
 ## RECAP / STEAM · LIBERO-10 Task 0 MVP
 
 - 退役 DSRL 的 Pi0 + LIBERO-Spatial 实验入口，保留底层通用实现与历史发布记录。
