@@ -24,7 +24,7 @@ runner:
     log_path: "../results"
     project_name: rlinf
     experiment_name: "steam_sft"
-    logger_backends: ["tensorboard"]
+    logger_backends: ["tensorboard", "wandb"]
 
   max_epochs: -1
   max_steps: 16000

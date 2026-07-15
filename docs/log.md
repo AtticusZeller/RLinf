@@ -4,6 +4,11 @@
 
 <!-- 每个任务通过全部必要验证后，在本行下方追加一条 -->
 
+## 2026-07-15 · RECAP / STEAM 默认启用 W&B
+
+- RECAP value、STEAM value 与共享 CFG 基础配置默认同时启用 TensorBoard 和 W&B，统一写入 W&B 项目 ``rlinf``。
+- 已验证三份 YAML 解析与 logger backend 值；当前 ``.venv`` 使用 W&B 0.25.0，认证信息已配置。
+
 ## 2026-07-14 · RECAP / STEAM · LIBERO-10 Task 0 MVP
 
 - 退役 DSRL（Pi0 + LIBERO-Spatial）的 4 份训练配置、e2e/CI 入口与中英文活跃文档；保留底层通用实现和历史发布记录。

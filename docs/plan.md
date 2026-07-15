@@ -12,4 +12,5 @@
 - 数据原件、标签和 checkpoint 持久化到 OSS，视频训练工作集自动暂存到本地可重建缓存。
 - 对 SFT baseline、RECAP、STEAM 各执行 50 个固定初始状态 × 2 轮评测，报告成功率、相对 baseline 变化和 Wilson 95% 区间。
 - 保留原 4,096-rollout、三 seed 配置为显式 ``full`` 流程，不作为默认入口。
+- 后续 RECAP/STEAM 价值模型与 CFG 训练默认同时记录 TensorBoard 和 W&B，统一写入 W&B 项目 ``rlinf``。
 - seed 0 已验证：baseline 32%，RECAP 9%，STEAM 14%；结论是两条工程链路可用，但当前 smoke 超参数没有超过 SFT baseline。
