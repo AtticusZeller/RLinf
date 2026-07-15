@@ -4,6 +4,13 @@
 
 <!-- 每个任务通过全部必要验证后，在本行下方追加一条 -->
 
+## 2026-07-15 · 修复 Medium RECAP value 启动失败
+
+- Medium returns 配置补齐 ``libero10_task0_eval``，确保 value validation
+  使用同 tag 的 returns sidecar；新增配置关系回归测试。
+- 已通过 Ruff、6 个 pytest、Hydra 组合检查，并真实生成 25,493-row eval
+  returns sidecar，消除 4 个 FSDP worker 初始化时的 ``FileNotFoundError``。
+
 ## 2026-07-15 · RECAP / STEAM 中等预算实验入口
 
 - 新增专有 ``docs/experiment-log.md``，分离实验假设、运行证据和算法结论；

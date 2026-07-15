@@ -4,6 +4,8 @@ data:
       type: sft
     - dataset_path: ${oc.env:RLINF_RECAP_MEDIUM_DATA_ROOT}/libero10_task0_train
       type: rollout
+    - dataset_path: ${oc.env:RLINF_RECAP_MVP_DATA_ROOT}/libero10_task0_eval
+      type: rollout
   dataset_type: sft
   gamma: 1.0
   failure_reward: -300.0

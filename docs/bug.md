@@ -4,6 +4,16 @@
 
 <!-- 新 bug 追加到本行下方 -->
 
+## 2026-07-15 · RECAP value validation 缺少同 tag returns sidecar
+
+- **触发：** value YAML 的 ``eval_data_paths`` 指向离线 eval 数据集，但
+  returns YAML 只覆盖训练数据；FSDP worker 在构造 validation dataset 时因
+  找不到同 tag sidecar 全部退出，GPU 随即空闲。
+- **修复：** returns 阶段必须覆盖 value 阶段的所有 ``eval_data_paths``；
+  增加配置测试，断言 validation 路径是 returns 路径的子集且 tag 相同。
+- **原因：** Hydra 只能验证各 YAML 能否组合，无法发现跨阶段数据产物依赖；
+  baseline 成功也不能证明后续 value 数据链完整，必须检查 sidecar 契约。
+
 ## 2026-07-14 · STEAM 高并发多卡优势标注被 SIGTERM 终止
 
 - **触发：** 每卡 ``batch_size=256``、12 个视频 worker 时，SFT 标注完成后在 rollout 首批被外部 ``SIGTERM`` 终止；CUDA 没有 OOM，Python 也没有异常。
