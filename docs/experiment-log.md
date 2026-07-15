@@ -14,7 +14,8 @@
 
 ## 2026-07-15 · RECAP / STEAM · LIBERO-10 Task 0 Medium
 
-- **状态：** 资产与运行入口已验证，待启动训练。
+- **状态：** 运行中；2026-07-15 11:07（UTC+8）启动，当前处于 baseline
+  评测阶段。
 - **目标与假设：** 判断 MVP 的负收益主要来自 64 条 rollout 与 200-step CFG
   预算不足，还是当前方法/数据组合本身没有方向性收益。
 - **数据：** 30 条官方 SFT；从 4,096 条 rollout 按 ``is_success`` 分层、
@@ -29,6 +30,9 @@
   各运行 100 回合固定初始状态评测。
 - **日志与产物：** W&B 项目 ``atticux/rlinf``；本地根目录
   ``/mnt/data/atticux/rlinf/experiments/recap-steam-libero10-task0-medium``。
+- **启动证据：** tmux 会话 ``rlinf-recap-steam-medium``；统一日志
+  ``/tmp/rlinf-recap-steam-medium.log``；baseline W&B run
+  ``https://wandb.ai/atticux/rlinf/runs/v2o8m2zm``。
 - **工程通过标准：** 256 条子集、returns/advantages sidecar、value/CFG
   checkpoint、5 组完整评测和 ``summary.json`` 全部存在。
 - **方向性判断：** 先比较 step 500→1,000，再比较 SFT baseline 32%。若
