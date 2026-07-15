@@ -21,7 +21,7 @@ wandb status
 bash examples/offline_rl/run_libero10_task0_comparison.sh prepare
 ```
 
-RECAP/STEAM 后续训练默认同时记录 TensorBoard 和 W&B，W&B 项目名为
+RECAP/STEAM 后续训练与评测默认同时记录 TensorBoard 和 W&B，W&B 项目名为
 ``rlinf``。运行前应确保 ``wandb status`` 显示已登录。
 
 ### 2. 分阶段运行

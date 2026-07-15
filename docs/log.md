@@ -6,8 +6,8 @@
 
 ## 2026-07-15 · RECAP / STEAM 默认启用 W&B
 
-- RECAP value、STEAM value 与共享 CFG 基础配置默认同时启用 TensorBoard 和 W&B，统一写入 W&B 项目 ``rlinf``。
-- 已验证三份 YAML 解析与 logger backend 值；当前 ``.venv`` 使用 W&B 0.25.0，认证信息已配置。
+- RECAP value、STEAM value、共享 CFG 与三份 LIBERO Task 0 评测配置默认同时启用 TensorBoard 和 W&B，统一写入 W&B 项目 ``rlinf``。
+- 已验证六份 YAML 解析与 logger backend 值；当前 ``.venv`` 使用 W&B 0.25.0，认证信息已配置。
 
 ## 2026-07-14 · RECAP / STEAM · LIBERO-10 Task 0 MVP
 
