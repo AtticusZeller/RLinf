@@ -14,8 +14,9 @@
 
 ## 2026-07-15 · RECAP / STEAM · LIBERO-10 Task 0 Medium
 
-- **状态：** 运行中；首次运行在 RECAP value 初始化时失败，修复后于
-  2026-07-15 12:06（UTC+8）从 RECAP 阶段续跑，当前 4 张 H20 正在训练。
+- **状态：** 因服务器迁移暂停。RECAP 已完成全部 value → advantage → CFG →
+  eval 链路；STEAM value、advantage 与 CFG step 500 checkpoint 已完成，当前
+  尚未恢复到 step 1,000，也尚未执行 STEAM eval。
 - **目标与假设：** 判断 MVP 的负收益主要来自 64 条 rollout 与 200-step CFG
   预算不足，还是当前方法/数据组合本身没有方向性收益。
 - **数据：** 30 条官方 SFT；从 4,096 条 rollout 按 ``is_success`` 分层、
@@ -28,8 +29,10 @@
   CFG 均为 1,000 steps，并在 step 500/1,000 保存 checkpoint。
 - **评测：** 单 seed；baseline、RECAP step 500/1,000、STEAM step 500/1,000
   各运行 100 回合固定初始状态评测。
-- **阶段结果：** baseline 已完成 100 回合，``success_at_end=33%``、
-  ``success_once=35%``；后续方法结果尚未完成。
+- **阶段结果：** baseline 100 回合 ``success_at_end=33%``、
+  ``success_once=35%``；RECAP step 500 为 42%/42%，step 1,000 为
+  58%/60%（前者为 at-end，后者为 once）。STEAM value 已完成 500 steps，
+  但尚无 advantage、policy 或 eval 结果。
 - **日志与产物：** W&B 项目 ``atticux/rlinf``；本地根目录
   ``/mnt/data/atticux/rlinf/experiments/recap-steam-libero10-task0-medium``。
 - **启动证据：** tmux 会话 ``rlinf-recap-steam-medium``；统一日志
@@ -39,7 +42,18 @@
   ``https://wandb.ai/atticux/rlinf/runs/91a7zyrh``。
 - **运行异常：** 首次运行于 11:22 因 ``libero10_task0_eval`` 缺少同 tag
   returns sidecar 退出；提交 ``450e9272`` 补齐 returns 配置和回归测试，实际
-  生成 25,493-row sidecar 后续跑。baseline 产物被保留，没有重复评测。
+  生成 25,493-row sidecar 后续跑。baseline 产物被保留，没有重复评测。第二次
+  运行于 21:26 在 STEAM advantage 的 local rank 3 收到 ``SIGSEGV``（exit
+  code -11）；elastic launcher 终止其余三个 rank。该失败发生在数据读取前；
+  单卡探针已越过初始化，正式续跑改为 ``CUDA_VISIBLE_DEVICES=0,1,2``、
+  ``RLINF_NPROC=3``，复用 STEAM value checkpoint 并避开物理 GPU 3。
+- **迁移暂停点：** 三卡 advantage 已完成并写入两份 sidecar；随后 STEAM CFG
+  使用 4 卡稳定训练至 step 514。``global_step_500`` 的 full weights（8.53 GB）
+  与 4 个 ``.distcp`` shard 已写入 OSS；为迁移主动停止，step 501–514 不计入
+  可恢复状态。恢复时从 ``global_step_500`` 设置 ``runner.resume_dir``，继续到
+  step 1,000，再执行 STEAM step 500/1,000 的 100 回合评测。
+- **归档：** 续跑中断日志与原始 SIGSEGV 日志已复制到
+  ``seed-0/steam/run-logs/``；W&B 本地同步目录也在同一 OSS 实验根目录下。
 - **工程通过标准：** 256 条子集、returns/advantages sidecar、value/CFG
   checkpoint、5 组完整评测和 ``summary.json`` 全部存在。
 - **方向性判断：** 先比较 step 500→1,000，再比较 SFT baseline 32%。若

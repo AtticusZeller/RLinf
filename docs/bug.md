@@ -4,6 +4,21 @@
 
 <!-- 新 bug 追加到本行下方 -->
 
+## 2026-07-15 · STEAM Medium 四卡 advantage 初始化触发 SIGSEGV
+
+- **触发：** STEAM Medium value 完成后，使用 ``torchrun --nproc-per-node=4``
+  生成 ensemble advantage；进程尚未读取数据或写入 sidecar 时，local rank 3
+  以 exit code ``-11`` 退出。``torch.distributed.elastic`` 随后向 rank 0–2
+  发送 ``SIGTERM``，使整个 advantage 阶段失败。
+- **恢复：** 保留已完成的 STEAM value checkpoint，并以
+  ``CUDA_VISIBLE_DEVICES=0,1,2 RLINF_NPROC=3`` 仅重跑 advantage，避开发生
+  故障的物理 GPU 3；成功后继续原有 1,000-step CFG 与 step 500/1,000 的评测，
+  不重跑 baseline、RECAP 或 STEAM value。
+- **原因与边界：** 日志只显示 TensorFlow/oneDNN 原生初始化后发生段错误，
+  没有 Python traceback、CUDA OOM 或数据读取日志；目前只能归类为多进程
+  原生运行时不稳定，不能归因于 STEAM 算法或数据。单卡探针已越过初始化，
+  支持先排除通用单进程故障；三卡恢复在吞吐与隔离 rank 3 之间折中。
+
 ## 2026-07-15 · RECAP value validation 缺少同 tag returns sidecar
 
 - **触发：** value YAML 的 ``eval_data_paths`` 指向离线 eval 数据集，但

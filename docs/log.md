@@ -4,6 +4,15 @@
 
 <!-- 每个任务通过全部必要验证后，在本行下方追加一条 -->
 
+## 2026-07-16 · STEAM Medium 迁移前安全暂停
+
+- 已在 STEAM CFG ``global_step_500`` 后主动停止训练；确认所有 GPU 进程、
+  自动评测 watcher 均已退出。
+- 已在 OSS 核验 STEAM value、两份 advantage sidecar、step 500 full weights、
+  4 个分布式 checkpoint shard、W&B 目录与续跑/SIGSEGV 归档日志。
+- 恢复入口为 ``global_step_500`` 的 ``runner.resume_dir``；恢复到 step 1,000
+  后仍需运行 STEAM 两档 100 回合评测和 Medium 汇总。
+
 ## 2026-07-15 · 修复 Medium RECAP value 启动失败
 
 - Medium returns 配置补齐 ``libero10_task0_eval``，确保 value validation
