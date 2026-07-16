@@ -103,8 +103,17 @@ def main(cfg) -> None:
 
     # Create env worker group
     env_placement = component_placement.get_strategy("env")
+    # robosuite resolves EGL devices against physical GPU IDs, which conflicts
+    # with CUDA_VISIBLE_DEVICES remapping used for isolated Ray workers.
+    isolate_env_gpu = not any(
+        env_cfg is not None and env_cfg.env_type == "libero"
+        for env_cfg in (cfg.env.get("train"), cfg.env.get("eval"))
+    )
     env_group = EnvWorker.create_group(cfg).launch(
-        cluster, name=cfg.env.group_name, placement_strategy=env_placement
+        cluster,
+        name=cfg.env.group_name,
+        placement_strategy=env_placement,
+        isolate_gpu=isolate_env_gpu,
     )
 
     reward_group = None

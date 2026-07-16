@@ -14,6 +14,7 @@
 
 import asyncio
 import gc
+import os
 from collections import defaultdict
 from typing import Any
 
@@ -222,6 +223,14 @@ class EnvWorker(Worker):
         )
 
         self.update_env_cfg()
+
+        # robosuite checks EGL device IDs before LIBERO is imported. This
+        # container exposes one EGL device, so LIBERO uses its local ID 0.
+        is_libero = (self.enable_train and self.cfg.env.train.env_type == "libero") or (
+            self.enable_eval and self.cfg.env.eval.env_type == "libero"
+        )
+        if is_libero:
+            os.environ["MUJOCO_EGL_DEVICE_ID"] = "0"
 
         if self.enable_train:
             train_env_cls = get_env_cls(self.cfg.env.train.env_type, self.cfg.env.train)
