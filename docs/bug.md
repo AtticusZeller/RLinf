@@ -4,6 +4,18 @@
 
 <!-- 新 bug 追加到本行下方 -->
 
+## 2026-07-18 · 迁移后 TorchCodec 找不到 Conda 的 libpython 动态库
+
+- **触发：** 新机器从 STEAM ``global_step_500`` 恢复时，首个视频 batch 导入
+  TorchCodec 失败，报错指向 ``libpython3.11.so.1.0`` 不在动态库搜索路径；训练
+  在 DataLoader 首批之前退出，W&B run ``w47602uc`` 无有效训练指标。
+- **修复：** 在启动训练、评测和任何 TorchCodec 导入探针前设置
+  ``LD_LIBRARY_PATH=/root/miniconda3/envs/dsrl_pi0/lib:${LD_LIBRARY_PATH:-}``。
+  导入 ``torchcodec.decoders.VideoDecoder`` 与后续两档 STEAM eval 均已验证通过。
+- **原因与边界：** Python 可执行文件来自项目 ``.venv``，但系统动态链接器不会
+  自动搜索 Conda 环境中的共享 ``libpython``。这属于机器迁移的运行时环境差异，
+  与 checkpoint、数据和 STEAM 算法无关。
+
 ## 2026-07-15 · STEAM Medium 四卡 advantage 初始化触发 SIGSEGV
 
 - **触发：** STEAM Medium value 完成后，使用 ``torchrun --nproc-per-node=4``

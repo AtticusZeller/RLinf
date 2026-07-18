@@ -4,6 +4,16 @@
 
 <!-- 每个任务通过全部必要验证后，在本行下方追加一条 -->
 
+## 2026-07-18 · 完成 RECAP / STEAM Medium 实验评估
+
+- STEAM 从 OSS 的 ``global_step_500`` 恢复到 step 1,000，并完成 step 500/1,000
+  两组各 100 回合的 LIBERO-10 Task 0 评测；``summary.json`` 已在 OSS 生成。
+- 汇总的 ``success_once`` 为：SFT baseline 35%、RECAP step 500 42%、RECAP
+  step 1,000 60%、STEAM step 500 55%、STEAM step 1,000 52%。两种方法均在
+  此单任务单 seed MVP 中超过 SFT；STEAM 的较优 checkpoint 为 step 500。
+- 已核验评测完成时训练/评测进程全部退出、GPU 资源释放，以及 5 组评测汇总、
+  OSS checkpoint 和 eval 日志均存在。完整实验记录见 ``docs/experiment-log.md``。
+
 ## 2026-07-16 · STEAM Medium 迁移前安全暂停
 
 - 已在 STEAM CFG ``global_step_500`` 后主动停止训练；确认所有 GPU 进程、

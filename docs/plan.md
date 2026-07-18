@@ -11,9 +11,10 @@
 - RECAP 使用 2,000-step value，STEAM 使用 500-step ensemble value；两者 CFG 均为 1,000 steps。
 - 对 baseline 与两种方法的 CFG step 500/1,000 各评测 100 回合。若两种方法都未超过 baseline 且 500→1,000 没有上升，则停止，不进入 full。
 - 数据、checkpoint 与结果写入 ``/mnt/data/atticux/rlinf/``，训练与评测同步 W&B 项目 ``rlinf``。
-- STEAM Medium 的四卡 advantage 已在 rank 3 原生初始化阶段 SIGSEGV；GPU 0–2
-  三卡续跑已完成 advantage，CFG 已保存 ``global_step_500`` 后因服务器迁移暂停。
-  迁移后从该 checkpoint 恢复到 step 1,000，完成两档 eval，再写入完整结论。
+- 已完成：STEAM Medium 的四卡 advantage SIGSEGV 后改用 GPU 0–2 三卡完成
+  advantage；服务器迁移后从 ``global_step_500`` 在两张 H20 恢复至 step 1,000，
+  并完成两档评测与汇总。RECAP step 1,000 为 60%，STEAM 最佳为 step 500 的
+  55%，均高于 35% SFT baseline；不自动进入 full。
 
 ## RECAP / STEAM · LIBERO-10 Task 0 MVP
 

@@ -14,9 +14,8 @@
 
 ## 2026-07-15 · RECAP / STEAM · LIBERO-10 Task 0 Medium
 
-- **状态：** 因服务器迁移暂停。RECAP 已完成全部 value → advantage → CFG →
-  eval 链路；STEAM value、advantage 与 CFG step 500 checkpoint 已完成，当前
-  尚未恢复到 step 1,000，也尚未执行 STEAM eval。
+- **状态：** 完成。RECAP 与 STEAM 均已完成 value → advantage → CFG →
+  100 回合评测 → 汇总的完整链路；评测结果、checkpoint 与日志均已落在 OSS。
 - **目标与假设：** 判断 MVP 的负收益主要来自 64 条 rollout 与 200-step CFG
   预算不足，还是当前方法/数据组合本身没有方向性收益。
 - **数据：** 30 条官方 SFT；从 4,096 条 rollout 按 ``is_success`` 分层、
@@ -29,17 +28,29 @@
   CFG 均为 1,000 steps，并在 step 500/1,000 保存 checkpoint。
 - **评测：** 单 seed；baseline、RECAP step 500/1,000、STEAM step 500/1,000
   各运行 100 回合固定初始状态评测。
-- **阶段结果：** baseline 100 回合 ``success_at_end=33%``、
-  ``success_once=35%``；RECAP step 500 为 42%/42%，step 1,000 为
-  58%/60%（前者为 at-end，后者为 once）。STEAM value 已完成 500 steps，
-  但尚无 advantage、policy 或 eval 结果。
+- **最终结果：** 汇总以 ``success_once`` 为主指标，结果如下（单 seed、每组
+  100 回合；Wilson 95% CI 见 ``summary.json``）：
+
+  | 方法 | success_once | 相对 SFT baseline |
+  | --- | ---: | ---: |
+  | SFT baseline | 35% | — |
+  | RECAP step 500 | 42% | +7 pp |
+  | RECAP step 1,000 | **60%** | **+25 pp** |
+  | STEAM step 500 | 55% | +20 pp |
+  | STEAM step 1,000 | 52% | +17 pp |
+
+  STEAM step 500 的 ``success_at_end/success_once`` 均为 55%；step 1,000
+  分别为 50%/52%。RECAP 的 step 500 为 42%/42%，step 1,000 为 58%/60%
+  （前者为 at-end，后者为 once）。
 - **日志与产物：** W&B 项目 ``atticux/rlinf``；本地根目录
   ``/mnt/data/atticux/rlinf/experiments/recap-steam-libero10-task0-medium``。
-- **启动证据：** tmux 会话 ``rlinf-recap-steam-medium``；统一日志
-  ``/tmp/rlinf-recap-steam-medium.log``，续跑日志
-  ``/tmp/rlinf-recap-steam-medium-retry1.log``；baseline W&B run
-  ``https://wandb.ai/atticux/rlinf/runs/v2o8m2zm``，RECAP value W&B run
-  ``https://wandb.ai/atticux/rlinf/runs/91a7zyrh``。
+- **运行证据：** W&B 项目 ``atticux/rlinf``；baseline run
+  ``https://wandb.ai/atticux/rlinf/runs/v2o8m2zm``，RECAP value run
+  ``https://wandb.ai/atticux/rlinf/runs/91a7zyrh``，STEAM step 500 eval run
+  ``https://wandb.ai/atticux/rlinf/runs/dgzdnm67``，STEAM step 1,000 eval run
+  ``https://wandb.ai/atticux/rlinf/runs/6b15twrk``。统一结果为
+  ``/mnt/data/atticux/rlinf/experiments/recap-steam-libero10-task0-medium/summary.json``；
+  两份 STEAM eval 日志位于同一实验目录的 ``seed-0/steam_step{500,1000}/eval.log``。
 - **运行异常：** 首次运行于 11:22 因 ``libero10_task0_eval`` 缺少同 tag
   returns sidecar 退出；提交 ``450e9272`` 补齐 returns 配置和回归测试，实际
   生成 25,493-row sidecar 后续跑。baseline 产物被保留，没有重复评测。第二次
@@ -47,19 +58,22 @@
   code -11）；elastic launcher 终止其余三个 rank。该失败发生在数据读取前；
   单卡探针已越过初始化，正式续跑改为 ``CUDA_VISIBLE_DEVICES=0,1,2``、
   ``RLINF_NPROC=3``，复用 STEAM value checkpoint 并避开物理 GPU 3。
-- **迁移暂停点：** 三卡 advantage 已完成并写入两份 sidecar；随后 STEAM CFG
-  使用 4 卡稳定训练至 step 514。``global_step_500`` 的 full weights（8.53 GB）
-  与 4 个 ``.distcp`` shard 已写入 OSS；为迁移主动停止，step 501–514 不计入
-  可恢复状态。恢复时从 ``global_step_500`` 设置 ``runner.resume_dir``，继续到
-  step 1,000，再执行 STEAM step 500/1,000 的 100 回合评测。
+- **迁移与恢复：** 三卡 advantage 已完成并写入两份 sidecar；原四卡 CFG 在
+  step 514 为服务器迁移主动停止。新机器以两张 H20 从 ``global_step_500``
+  的 full weights 恢复，完成 step 1,000（训练阶段约 2 小时 56 分）。新机缺少
+  TorchCodec 所需的 ``libpython3.11.so.1.0`` 动态库路径，设置
+  ``LD_LIBRARY_PATH=/root/miniconda3/envs/dsrl_pi0/lib:${LD_LIBRARY_PATH:-}``
+  后恢复正常；不影响已保存的 checkpoint。
 - **归档：** 续跑中断日志与原始 SIGSEGV 日志已复制到
   ``seed-0/steam/run-logs/``；W&B 本地同步目录也在同一 OSS 实验根目录下。
-- **工程通过标准：** 256 条子集、returns/advantages sidecar、value/CFG
-  checkpoint、5 组完整评测和 ``summary.json`` 全部存在。
-- **方向性判断：** 先比较 step 500→1,000，再比较 SFT baseline 32%。若
-  RECAP 与 STEAM 都未超过 baseline，且随 CFG 步数没有上升，则停止扩到 full。
-- **预计成本：** 4 张 H20、资产已缓存后约 12–16 小时；选中数据下载约
-  3 分钟，物化约 3 分钟。训练与评测实际耗时在完成后回填。
+- **工程验收：** 256 条子集、returns/advantages sidecar、两种 CFG
+  checkpoint、5 组完整评测和 ``summary.json`` 均已存在；评测完成时训练与评测
+  进程均已退出、GPU 已释放。
+- **结论与边界：** 两种方法均超过 SFT baseline，证明当前 Medium 配置的实现
+  和方向性收益成立。RECAP 在 500→1,000 steps 持续提升；STEAM 在 step 500
+  取得峰值、继续训练后下降 3 pp，因此后续比较应保留 STEAM step 500 checkpoint。
+  这是单任务、单 seed 的最小可行性验证，不可作为论文级别的统计结论；不自动扩展
+  到 full，等待真机迁移或新增 benchmark 的具体计划。
 
 ## 2026-07-14 · RECAP / STEAM · LIBERO-10 Task 0 MVP
 
