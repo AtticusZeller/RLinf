@@ -4,6 +4,19 @@
 
 <!-- 每个任务通过全部必要验证后，在本行下方追加一条 -->
 
+## 2026-07-23 · RLT ManiSkill W&B 实验状态核验
+
+- 已核验 W&B 项目 ``atticux/rlt-maniskill`` 的 6 个 run。正式 SFT 初始化
+  ``stage1-full``（``j1fn4s84``）状态为 ``finished``，完成 1,999/2,000 step；
+  最后 ``train/loss`` 为 0.5497、``train/rlt_loss`` 为 0.5407、
+  ``train/vla_loss`` 为 0.00894。
+- ``stage2-smoke``（``psqd2ti0``）已正常完成 2/2 step，验证了 ManiSkill
+  rollout 流程；但 return、reward 和 ``success_once`` 均为 0，replay transition
+  数、actor/critic update 数和 ``update_step`` 均为 0，尚未达到在线 RLT 更新条件。
+- 当前 W&B 未发现 ``stage2-full`` run；其余 3 个 ``stage2-smoke`` run 没有有效
+  summary。结论是 stage 1 已完成，stage 2 仅完成 smoke 流程验证，尚未产出正式
+  在线 RLT 训练结果。
+
 ## 2026-07-18 · 完成 RECAP / STEAM Medium 实验评估
 
 - STEAM 从 OSS 的 ``global_step_500`` 恢复到 step 1,000，并完成 step 500/1,000
