@@ -51,6 +51,28 @@
   ``https://wandb.ai/atticux/rlinf/runs/6b15twrk``。统一结果为
   ``/mnt/data/atticux/rlinf/experiments/recap-steam-libero10-task0-medium/summary.json``；
   两份 STEAM eval 日志位于同一实验目录的 ``seed-0/steam_step{500,1000}/eval.log``。
+- **资源账本：** 下表来自对应 W&B run 的 ``system`` 流。显存以
+  ``memoryAllocatedBytes`` 换算为 GiB；GPU·小时按
+  ``实际 runtime × W&B 中显存分配超过 1 GiB 的 GPU 数`` 计算，用于迁移预算，
+  不等同于云平台账单或纯计算时间；利用率和功耗是采样均值。
+
+  | 阶段 | W&B run | 实际时长 | 活跃 GPU | 峰值显存 / 卡 | 平均 GPU 利用率 | GPU·小时 |
+  | --- | --- | ---: | ---: | ---: | ---: | ---: |
+  | RECAP value（2,000 steps） | ``91a7zyrh`` | 3 小时 14 分 38 秒 | 4 | 68.1–68.4 GiB | 76–82% | 12.98 |
+  | RECAP CFG policy（1,000 steps） | ``x1q36l5x`` | 3 小时 00 分 46 秒 | 4 | 76.6–77.5 GiB | 97–98% | 12.05 |
+  | RECAP step 500 eval（100 回合） | ``0kv98l26`` | 12 分 28 秒 | 2 | 13.6 GiB | 26–30% | 0.42 |
+  | RECAP step 1,000 eval（100 回合） | ``i3jrii8r`` | 12 分 35 秒 | 2 | 13.6 GiB | 30–32% | 0.42 |
+  | STEAM value（500 steps） | ``yk6kxnqk`` | 15 分 13 秒 | 4 | 58.9–59.1 GiB | 52–58% | 1.02 |
+  | STEAM CFG policy（1,000 steps） | ``l1jrliu4`` | 2 小时 57 分 58 秒 | 2 | 75.3 GiB | 97% | 5.93 |
+  | STEAM step 500 eval（100 回合） | ``dgzdnm67`` | 12 分 48 秒 | 2 | 13.6 GiB | 34–35% | 0.43 |
+  | STEAM step 1,000 eval（100 回合） | ``6b15twrk`` | 12 分 34 秒 | 2 | 13.6 GiB | 28–29% | 0.42 |
+
+  baseline 评测另耗 11 分 03 秒、2 卡、0.37 GPU·小时。以上 W&B 可观测阶段合计
+  约 34.0 GPU·小时，未包含没有对应 system 流的预处理、advantage 生成和中断重试。
+- **迁移建议：** 完整 RECAP 需 4 张每卡至少 80 GiB 显存的 GPU；STEAM CFG policy
+  需 2 张每卡至少 80 GiB 的 GPU；100 回合评测可用 2 张约 16 GiB 显存的 GPU。
+  RECAP/STEAM policy 的利用率接近满载，优先保留原有卡数和显存容量；评测利用率较低，
+  迁移后可单独评估是否缩卡，但这不是本次已验证的配置。
 - **运行异常：** 首次运行于 11:22 因 ``libero10_task0_eval`` 缺少同 tag
   returns sidecar 退出；提交 ``450e9272`` 补齐 returns 配置和回归测试，实际
   生成 25,493-row sidecar 后续跑。baseline 产物被保留，没有重复评测。第二次

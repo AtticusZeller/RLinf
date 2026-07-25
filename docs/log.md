@@ -4,6 +4,16 @@
 
 <!-- 每个任务通过全部必要验证后，在本行下方追加一条 -->
 
+## 2026-07-25 · 归档 RECAP / STEAM 实验资源账本
+
+- 通过 W&B ``system`` 流回填 Medium 实验的实际时长、监测 GPU 数、峰值显存、
+  平均利用率和近似 GPU·小时；完整记录见 ``docs/experiment-log.md``。
+- W&B 可观测阶段合计约 34.0 GPU·小时。迁移时，RECAP 完整流程需 4 张至少 80 GiB
+  显存 GPU，STEAM CFG policy 需 2 张至少 80 GiB 显存 GPU；100 回合评测使用 2 张
+  约 16 GiB 显存 GPU 已被验证。
+- 已复核所有新增数值对应具体 W&B run；预处理、advantage 生成和中断重试没有完整
+  system 流，因此明确未计入该资源合计。
+
 ## 2026-07-23 · RLT ManiSkill W&B 实验状态核验
 
 - 已核验 W&B 项目 ``atticux/rlt-maniskill`` 的 6 个 run。正式 SFT 初始化
