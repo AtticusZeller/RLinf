@@ -88,6 +88,7 @@ runner
 
     max_epochs: 5
     max_steps: -1
+    max_run_duration: null
 
     val_check_interval: 1
     save_interval: 50
@@ -118,6 +119,10 @@ runner
      - 最大训练 epoch 数。
    * - ``runner.max_steps``
      - 最大全局步数；为 ``-1`` 时，依据 ``runner.max_epochs`` 自动确定。
+   * - ``runner.max_run_duration``
+     - 可选的 embodied 运行时限，格式为
+       ``天:小时:分钟:秒``。到达时限后会完成当前 step，再执行最终验证与
+       checkpoint 保存。
    * - ``runner.val_check_interval``
      - 验证 rollout 的触发频率（``-1`` 关闭）。
    * - ``runner.save_interval``

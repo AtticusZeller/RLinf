@@ -1,0 +1,16 @@
+runner:
+  logger:
+    log_path: "/mnt/data/atticux/rlt-maniskill/runs/smoke/stage2-learning"
+    project_name: rlt-maniskill
+    experiment_name: "stage2-learning-smoke"
+    wandb_entity: atticux
+    logger_backends: ["wandb"]
+  max_run_duration: "0:00:20:00"
+
+env:
+  train:
+    # Smoke-only override: start in the actor phase so the two-step run verifies
+    # replay ingestion and actor/critic updates instead of only environment setup.
+    rlt_policy_switch:
+      task_mode: critical_phase
+      trigger_mode: always_on

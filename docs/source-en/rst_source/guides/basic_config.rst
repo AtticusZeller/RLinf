@@ -90,6 +90,7 @@ runner
 
     max_epochs: 5
     max_steps: -1
+    max_run_duration: null
 
     val_check_interval: 1
     save_interval: 50
@@ -122,6 +123,10 @@ runner
    * - ``runner.max_steps``
      - Maximum training steps. If set to ``-1``, it is derived automatically from
        ``runner.max_epochs``.
+   * - ``runner.max_run_duration``
+     - Optional embodied-run time limit in ``days:hours:minutes:seconds`` format.
+       When the limit is reached, the current step finishes before final validation
+       and checkpointing.
    * - ``runner.val_check_interval``
      - How often to launch a validation rollout (``-1`` to disable).
    * - ``runner.save_interval``

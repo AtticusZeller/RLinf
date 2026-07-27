@@ -1,0 +1,18 @@
+runner:
+  logger:
+    log_path: "/mnt/data/atticux/vla-post-train/rlinf/rlt-maniskill/stage2-12h"
+    project_name: rlt-maniskill
+    experiment_name: "stage2-12h"
+    wandb_entity: atticux
+    logger_backends: ["wandb"]
+
+  # The native limit leaves time for worker startup, final evaluation, checkpoint
+  # persistence, and W&B shutdown inside the 12-hour wall-clock budget.
+  max_epochs: 500
+  max_run_duration: "0:11:00:00"
+  val_check_interval: 25
+  save_interval: 25
+
+env:
+  eval:
+    total_num_envs: 64

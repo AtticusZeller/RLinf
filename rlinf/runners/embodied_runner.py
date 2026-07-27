@@ -99,8 +99,8 @@ class EmbodiedRunner:
         else:
             self.reward_channel = None
 
-        # this timer checks if we should stop training
-        self.run_timer = Timer(None)  # Timer that checks if we should stop training
+        # Bound long embodied runs without interrupting a rollout or update.
+        self.run_timer = Timer(self.cfg.runner.get("max_run_duration", None))
 
         self.consumed_samples = 0
         # the step here is GRPO step
@@ -305,14 +305,16 @@ class EmbodiedRunner:
         training_metrics = [result.get("training_metrics", {}) for result in results]
         return rollout_metrics, training_metrics
 
-    def _maybe_eval_and_checkpoint(self, step: int) -> dict:
+    def _maybe_eval_and_checkpoint(
+        self, step: int, run_time_exceeded: bool = False
+    ) -> dict:
         run_val, save_model, _ = check_progress(
             self.global_step,
             self.max_steps,
             self.cfg.runner.val_check_interval,
             self.cfg.runner.save_interval,
             1.0,
-            run_time_exceeded=False,
+            run_time_exceeded=run_time_exceeded,
         )
 
         eval_metrics = {}
@@ -481,6 +483,7 @@ class EmbodiedRunner:
 
         start_step = self.global_step
         start_time = time.time()
+        self.run_timer.start_time()
         for _step in range(start_step, self.max_steps):
             # set global step
             self.actor.set_global_step(self.global_step)
@@ -541,7 +544,10 @@ class EmbodiedRunner:
                     env_bootstrap_handle.wait()
 
                 self.global_step += 1
-                eval_metrics = self._maybe_eval_and_checkpoint(_step)
+                run_time_exceeded = self.run_timer.is_finished()
+                eval_metrics = self._maybe_eval_and_checkpoint(
+                    _step, run_time_exceeded=run_time_exceeded
+                )
 
             if profiled_step is not None:
                 self._close_profiling_window(profiled_step)
@@ -559,11 +565,19 @@ class EmbodiedRunner:
                 eval_metrics=eval_metrics,
             )
 
+            if run_time_exceeded:
+                self.logger.info(
+                    "Time limit given by run_timer=%s reached. Stopping run",
+                    self.run_timer,
+                )
+                break
+
         self._finish_run()
 
     def run_pipeline(self):
         start_step = self.global_step
         start_time = time.time()
+        self.run_timer.start_time()
         for _step in range(start_step, self.max_steps):
             # set global step
             self.actor.set_global_step(self.global_step)
@@ -620,7 +634,10 @@ class EmbodiedRunner:
                     env_bootstrap_handle.wait()
 
                 self.global_step += 1
-                eval_metrics = self._maybe_eval_and_checkpoint(_step)
+                run_time_exceeded = self.run_timer.is_finished()
+                eval_metrics = self._maybe_eval_and_checkpoint(
+                    _step, run_time_exceeded=run_time_exceeded
+                )
 
             if profiled_step is not None:
                 self._close_profiling_window(profiled_step)
@@ -637,6 +654,13 @@ class EmbodiedRunner:
                 actor_training_metrics=actor_training_metrics,
                 eval_metrics=eval_metrics,
             )
+
+            if run_time_exceeded:
+                self.logger.info(
+                    "Time limit given by run_timer=%s reached. Stopping run",
+                    self.run_timer,
+                )
+                break
 
         self._finish_run()
 
