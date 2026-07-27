@@ -18,6 +18,7 @@ export SAPIEN_PHYSX_LIB_PATH="${persist_dir}/runtime-assets/.sapien/physx/105.1-
 
 venv_dir="${RLINF_VENV:-${repo_dir}/.venv}"
 export UV_PROJECT_ENVIRONMENT="${UV_PROJECT_ENVIRONMENT:-${venv_dir}}"
+export UV_NO_SYNC="${UV_NO_SYNC:-1}"
 source "${venv_dir}/bin/activate"
 
 case "${1:-}" in
