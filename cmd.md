@@ -2,6 +2,8 @@
 
 > 项目常用命令与用户侧验证入口。命令应可直接复制执行。
 
+## 常用命令
+
 ## RECAP / STEAM 最小可行性验证
 
 默认 MVP 使用 seed 0、官方 30 条 SFT 轨迹和 64 条离线 rollout。资产与输出均位于
@@ -121,7 +123,7 @@ bash examples/offline_rl/run_libero10_task0_comparison.sh prepare-full
 bash examples/offline_rl/run_libero10_task0_comparison.sh full
 ```
 
-## Pending User Verification
+## 待用户验证
 
 - **Status:** Passed（2026-07-14，seed 0）
 - **Purpose:** 验证 RECAP 与 STEAM 的离线标注、价值训练、CFG 和 LIBERO-10 Task 0 评测链路，并观察相对 SFT baseline 的方向性趋势。

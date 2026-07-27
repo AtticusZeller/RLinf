@@ -17,76 +17,144 @@ This file defines the behavioral baseline for agents working in this repository.
 **The execution environment is an input to the session.** The current branch, worktree, or other isolated environment is selected by the user or external scheduler before the session starts. The lifecycle below describes one session only. It must not decide how many tasks run in parallel or create or switch workspaces on its own. Unless the user explicitly changes the assignment, stay inside the provided workspace.
 
 - **Type A · Read-only exploration** (`explore-only`): answer questions and investigate without changing code. Gather context in read-only mode and do not enter the coding lifecycle.
-- **Type B · Small code change** (`small code`): the change is small, intent is clear, and no major trade-off exists. Skip heavyweight grilling and follow `code → verify → neat-freak → git-commit`.
-- **Type C · Large code change** (`large code`): the change is large, architectural, or involves meaningful trade-offs. Follow the full lifecycle, remain in the assigned workspace, and pass the verification gate before wrapping up.
+- **Type B · Small code change** (`small code`): the change is small, intent is already clear, and no meaningful behavioral or design fork exists. Skip alignment and understanding review; follow `code → agent verify → user verify by default → neat-freak → git-commit`.
+- **Type C− · Aligned delivery** (`aligned code`): the initial request is not precise enough to execute safely, so human intent alignment is mandatory before coding, but immediate human code-understanding review is not required. Follow `align → code → agent verify → user verify → record cognitive debt → neat-freak → git-commit`.
+- **Type C · Reviewed delivery** (`reviewed code`): human intent alignment is mandatory before coding and human understanding must be current before delivery. Follow the full lifecycle through Explain Diff and its five-question quiz.
 
 ```mermaid
 flowchart TD
     startNode["Session starts: classify the session"] --> kind{"Which type?"}
     kind -->|"Read-only A"| exploreOnly["explore-only, no code changes"]
     kind -->|"Small change B"| smallCode["code"]
-    kind -->|"Large change C"| align["explore/grill with user --> plan + user review"]
-    align --> largeCode["code(auto-approve) in assigned workspace"]
-    largeCode --> codeFail{"Did the code phase fail?"}
+    kind -->|"Aligned C-"| alignMinus["inspect --> interactive alignment --> confirmed refined task/plan"]
+    kind -->|"Reviewed C"| alignFull["inspect --> interactive alignment --> confirmed refined task/plan"]
+    alignMinus --> alignedCode["code(auto-approve) in assigned workspace"]
+    alignFull --> reviewedCode["code(auto-approve) in assigned workspace"]
+    alignedCode --> codeFail{"Did the code phase fail?"}
+    reviewedCode --> codeFail
     codeFail -->|"Yes"| stop["stop and return control to the user"]
     codeFail -->|"No"| agentVerify
     smallCode --> agentVerify["run every agent-accessible smoke/test"]
     agentVerify --> agentResult{"Did agent-run checks pass?"}
     agentResult -->|"No"| retryCode
-    agentResult -->|"Yes"| userNeeded{"Is user-side verification still required?"}
-    userNeeded -->|"No"| verified["all acceptance criteria passed"]
-    userNeeded -->|"Yes"| handoff["write cmd.md and wait for user-run-to-test"]
+    agentResult -->|"Yes"| userNeeded{"User verification required?"}
+    userNeeded -->|"B: explicitly waived"| verified["all acceptance criteria passed"]
+    userNeeded -->|"B default / C- / C"| handoff["write cmd.md and wait for user-run-to-test"]
     handoff --> userVerify["user runs checks and returns results"]
     userVerify --> userResult{"Did user-side verification pass?"}
     userResult -->|"No"| retryCode["return to code, fix, and re-verify"]
     userResult -->|"Yes"| verified
     retryCode --> agentVerify
-    verified --> neat["neat-freak"]
+    verified --> closeoutKind{"Which delivery type?"}
+    closeoutKind -->|"B"| neat["neat-freak"]
+    closeoutKind -->|"C-"| debt["record cognitive debt"]
+    closeoutKind -->|"C"| understand["explain-diff-html: Background --> Intuition --> Code --> Quiz"]
+    understand --> quiz{"Did the user pass all 5 questions?"}
+    quiz -->|"No"| study["revisit explanation and code"]
+    study --> understand
+    quiz -->|"Yes"| neat
+    debt --> neat
     neat --> commit["git-commit"]
 ```
 
-**Type C signals:** irreversible or destructive operations, architectural decisions, or work that must be decomposed into multiple subtasks. When uncertain, classify the session as Type C and align before acting.
+**Classification rules:**
 
-**Type C failure handling:** the `code` phase may proceed with auto-approval, but repeated failures or uncertainty about intent require an immediate stop. Return control to the user instead of gambling on another change (see Section 3).
+- Use Type B only when the request is genuinely small and already leaves no meaningful intent, behavior, or design question unanswered.
+- Use Type C− when coding requires clarification of the user's intent or preferences, but the user accepts deferring code-understanding review.
+- Use Type C for architectural, irreversible, high-ownership, or otherwise substantial work whose human understanding must be current at delivery.
+- When uncertain between B and C−, choose C−. When uncertain between C− and C, choose C.
+
+**Type C− / C failure handling:** after alignment, the `code` phase may proceed with auto-approval, but repeated failures or renewed uncertainty about intent require an immediate stop. Return control to the user instead of gambling on another change (see Section 3).
 
 ---
 
 ## 1. Timing · What to Do When
 
 - **At session start:** determine whether this is a new task or a continuation. For a continuation, read `docs/plan.md` and `docs/log.md` first to recover prior progress and reasoning.
-- **Before a Type C task starts:** use the grill workflow in Section 2 to align context and ensure the implementation path matches the user's intent.
+- **Before a Type C− or Type C task starts:** complete the Alignment Gate in Section 2. Type B skips it only because its intent is already unambiguous.
 - **After candidate code is written:** enter the verification gate below. Implementation is complete at this point; the task is not.
-- **After verification passes:** run `neat-freak` at task completion or a milestone to reconcile code, documentation (`docs/`, `README.md`), and memory. Do not spend time synchronizing documentation for code that may not work.
-- **After each task passes verification:** prepend an entry to `docs/log.md`. Never record an unverified task as complete.
+- **After verification passes:** Type B proceeds to `neat-freak`; Type C− records cognitive debt and proceeds to `neat-freak`; Type C enters the Understanding Gate.
+- **After the required gates pass:** run `neat-freak` at task completion or a milestone to reconcile code, documentation (`docs/`, `README.md`), and memory. Do not spend time synchronizing documentation for code that may not work.
+- **After each task passes its required gates:** prepend an entry to `docs/log.md`. For Type C−, label the entry and link its open cognitive-debt record.
 
 ### Verification Gate (Between Code and Wrap-Up)
 
 1. Before coding, use `karpathy-guidelines` to define observable acceptance criteria. After coding, derive the required checks from those criteria rather than relying on "looks correct."
 2. Run an appropriate combination of lint, typecheck, unit tests, and smoke tests wherever the agent can access the required environment. Preserve results that can be reviewed.
-3. If acceptance depends on a real robot, VLA setup, dedicated hardware, user credentials, or another environment unavailable to the agent, update the pending-verification section in root `cmd.md` with prerequisites, copyable commands, pass criteria, and the evidence to return on failure. Then stop and wait for the user to run it.
+3. **User-run verification is part of delivery.** It is mandatory for Type C− and Type C, and the default for Type B unless the user explicitly waives it. Update the pending-verification section in root `cmd.md` with prerequisites, copyable commands, pass criteria, and the evidence to return on failure. Then stop and wait for the user to run it and confirm the observed result.
 4. Any failed required check returns the task to `code`, followed by the full verification gate again. Do not reuse results invalidated by a fix.
-5. Only after every required check passes may the agent run `neat-freak`, record completion in `docs/log.md`, and invoke `git-commit`. During verification, update only the `cmd.md` content required for testing; do not begin broad documentation synchronization.
+5. Only after agent checks and every required user-run check pass may work enter its type-specific closeout. During verification, update only the `cmd.md` content required for testing; do not begin broad documentation synchronization.
+6. **Commit only the session patch:** stage and commit solely the hunks that implement or document the current session's verified task. Do not include pre-existing changes, unrelated files, drive-by cleanup, or any other work outside the session's scope. Inspect the staged diff before committing; if the intended patch cannot be isolated safely, stop and ask the user.
+
+### Understanding Gate (Between Verification and Wrap-Up)
+
+For Type C work, use `explain-diff-html` after verification and before `neat-freak` or
+`git-commit`.
+
+1. Generate the explanation in execution order with Background, Intuition, Code
+   walkthrough, and five medium-difficulty multiple-choice questions.
+2. The human must read the explanation and explicitly report passing all five
+   questions. Generating the artifact is not a pass.
+3. A wrong answer returns the human to the relevant explanation and code; keep the
+   gate closed until they pass.
+4. The gate exists to preserve the human's ability to participate in later design,
+   not merely to duplicate test verification.
+
+Type C− deliberately defers this Understanding Gate. Before its commit, append an
+Open entry to `docs/cognitive-debt.md` with the change scope, reason review was
+deferred, verification evidence, concepts not yet understood, and repayment
+criteria. The later repayment must run `explain-diff-html` against the recorded
+commit or diff, pass all five questions, mark the entry Repaid, and commit that
+closeout. Type C− defers understanding, never verification.
 
 ## 2. Alignment · Prerequisite for Coding (Embedded Grill Workflow)
 
-This is the most important rule. **Never hide uncertainty, rely on guesses, or start implementation while the user's intent is unclear.** Before a Type C change, follow Grill → Distill → Execute. Do not execute until the first two phases are complete.
+This is the most important rule for Type C− and Type C. **The user's first prompt
+is an initial task draft, not permission to fill its gaps with agent assumptions.**
+Never hide uncertainty, rely on guesses, or start implementation while the user's
+intent is unclear. Follow Inspect → Grill → Distill → Confirm → Execute. Do not
+write code until the user confirms the refined task or plan.
+
+**Inspect**
+- Read the relevant code and project documentation first.
+- Use the repository to establish current behavior and constraints. Repository
+  evidence can answer factual questions; it cannot decide the user's unstated
+  preferences, goals, trade-offs, or desired behavior.
 
 **Grill**
-- Follow the decision tree one question at a time and wait for the answer before asking the next.
-- Give a recommended answer and a one-sentence reason with every question.
-- Investigate anything that can be answered from code or documentation instead of asking the user.
+- Ask the smallest useful set of related questions, then iterate for as many rounds
+  as needed. Questions may be asked individually or in a batch; do not serialize
+  questions mechanically when one user response can resolve a related group.
+- Incorporate everything the user answers and do not re-ask resolved questions.
+- State the uncertainty and available choices before giving a recommended answer
+  and a one-sentence reason.
+- Investigate facts that can be answered from code or documentation instead of
+  asking the user, but never treat code as evidence of user intent.
 - When terminology is ambiguous or overloaded, propose one canonical term before continuing (for example: "Does `env` mean the Conda environment or the simulation environment? Choose one.").
 - Use concrete scenarios to make unclear relationships or boundaries precise.
 - Cross-check the user's description of system behavior against the code and surface contradictions immediately.
 
 **Distill**
-- Once discussion converges, write only durable outcomes into this file, then stop for user confirmation. Record only:
+- Once discussion converges, present a Refined Task or Plan containing the goal,
+  current context, expected behavior, in-scope work, explicit non-goals, user
+  preferences, constraints and trade-offs, acceptance criteria, implementation
+  outline, and remaining open questions.
+- Scale the artifact to the change: Type C− may use a short plan; Type C may need a
+  detailed Plan Mode artifact and several review rounds.
+- Persist only durable outcomes after confirmation:
   - **Glossary:** canonical terms in the form `term — definition`, without implementation details.
   - **Decisions:** difficult-to-reverse choices in the form `choice · alternatives · rationale`.
 - Record a decision only when it is difficult to reverse, surprising without context, and the result of a real trade-off. Skip it unless all three conditions hold.
 
+**Confirm**
+- Stop and ask the user to confirm the Refined Task or Plan.
+- Do not treat silence, lack of objection, or the agent's own confidence as
+  confirmation.
+- Any correction reopens alignment; update the artifact and ask again.
+
 **Execute**
-- Only now write the implementation plan and begin work, following the decisions just recorded.
+- Only after explicit confirmation begin implementation, following the agreed
+  refined task and plan.
 
 Follow `karpathy-guidelines`: make the smallest surgical change, avoid speculative design, state assumptions explicitly, and define verifiable success criteria.
 
@@ -113,6 +181,7 @@ Do not rely excessively on Git history. Maintain readable project context in `do
 - `docs/plan.md` — the forward-looking plan shared by the user and agent.
 - `docs/log.md` — verified completed tasks, with the newest entry first.
 - `docs/bug.md` — reusable lessons about unusual bugs, including triggers, fixes, and causes.
+- `docs/cognitive-debt.md` — explicitly deferred human understanding, with evidence and repayment status.
 - `docs/<module>.md` — module-level responsibilities and boundaries, indexed below.
 
 ### Code Documentation Index
