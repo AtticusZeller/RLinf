@@ -506,6 +506,30 @@ run_steam_medium() {
     require_file "${policy_checkpoint}"
 }
 
+run_steam_medium_value_smoke() {
+    local run_root
+    local seed="$1"
+    local value_checkpoint
+
+    validate_seed "${seed}"
+    stage_medium_data
+    check_medium_assets
+    export RLINF_EXPERIMENT_SEED="${seed}"
+    run_root="${MEDIUM_EXPERIMENT_ROOT}/smoke-seed-${seed}/steam"
+    value_checkpoint="${run_root}/steam-medium-value-2gpu-smoke/checkpoints/global_step_2/actor"
+
+    bash "${SCRIPT_DIR}/advantage_labeling/steam/run_steam_sft.sh" \
+        steam_value_model_sft \
+        +experiment@_global_=steam_libero10_task0_medium_value \
+        "runner.logger.log_path=${run_root}" \
+        "runner.logger.experiment_name=steam-medium-value-2gpu-smoke" \
+        "runner.max_steps=2" \
+        "runner.save_interval=2" \
+        "actor.optim.lr_warmup_steps=1" \
+        "actor.optim.total_training_steps=2"
+    require_dir "${value_checkpoint}"
+}
+
 run_recap_full() {
     local seed="$1"
     local nproc
@@ -570,13 +594,15 @@ run_eval() {
     local seed="$2"
     local profile="${3:-mvp}"
     local checkpoint_step="${4:-}"
+    local eval_seed="${5:-$seed}"
     local training_root
     local run_root
     local config_name
     local policy_checkpoint
 
     validate_seed "${seed}"
-    export RLINF_EXPERIMENT_SEED="${seed}"
+    validate_seed "${eval_seed}"
+    export RLINF_EXPERIMENT_SEED="${eval_seed}"
     if [[ "${profile}" == "mvp" ]]; then
         check_mvp_assets
         run_root="${MVP_EXPERIMENT_ROOT}/seed-${seed}/${method}"
@@ -628,11 +654,14 @@ run_eval() {
         exit 2
     fi
 
+    if [[ "${eval_seed}" != "${seed}" ]]; then
+        run_root="${run_root}/eval-seed-${eval_seed}"
+    fi
     mkdir -p "${run_root}/eval"
     local eval_args=(
         libero "${config_name}"
         "runner.logger.log_path=${run_root}/eval"
-        "runner.logger.experiment_name=${method}-${profile}${checkpoint_step:+-step${checkpoint_step}}-eval"
+        "runner.logger.experiment_name=${method}-${profile}${checkpoint_step:+-step${checkpoint_step}}-train${seed}-eval${eval_seed}"
     )
     if [[ -n "${policy_checkpoint:-}" ]]; then
         eval_args+=("runner.ckpt_path=${policy_checkpoint}")
@@ -667,6 +696,20 @@ summarize_medium() {
         --methods baseline recap_step500 recap_step1000 steam_step500 steam_step1000
 }
 
+summarize_steam_medium_replication() {
+    local eval_seed="$2"
+    local train_seed="$1"
+
+    python "${SCRIPT_DIR}/summarize_libero10_task0.py" \
+        "${MEDIUM_EXPERIMENT_ROOT}" \
+        --seeds "${train_seed}" \
+        --baseline-seed "${eval_seed}" \
+        --eval-seed "${eval_seed}" \
+        --expected-trajectories 100 \
+        --methods baseline steam_step500 steam_step1000 \
+        --output "${MEDIUM_EXPERIMENT_ROOT}/summary.json"
+}
+
 run_mvp() {
     run_eval baseline 0 mvp
     run_recap_mvp 0
@@ -690,6 +733,19 @@ run_medium() {
     run_eval steam 0 medium 500
     run_eval steam 0 medium 1000
     summarize_medium
+}
+
+run_steam_medium_replication() {
+    local eval_seed="$2"
+    local train_seed="$1"
+
+    validate_seed "${train_seed}"
+    validate_seed "${eval_seed}"
+    run_eval baseline "${eval_seed}" medium
+    run_steam_medium "${train_seed}"
+    run_eval steam "${train_seed}" medium 500 "${eval_seed}"
+    run_eval steam "${train_seed}" medium 1000 "${eval_seed}"
+    summarize_steam_medium_replication "${train_seed}" "${eval_seed}"
 }
 
 run_full() {
@@ -719,7 +775,9 @@ Medium experiment commands:
   run_libero10_task0_comparison.sh prepare-medium
   run_libero10_task0_comparison.sh recap-medium <seed>
   run_libero10_task0_comparison.sh steam-medium <seed>
-  run_libero10_task0_comparison.sh eval-medium <baseline|recap|steam> <seed> [500|1000]
+  run_libero10_task0_comparison.sh steam-medium-value-smoke <seed>
+  run_libero10_task0_comparison.sh steam-medium-replication <train-seed> <eval-seed>
+  run_libero10_task0_comparison.sh eval-medium <baseline|recap|steam> <train-seed> [500|1000] [eval-seed]
   run_libero10_task0_comparison.sh medium
   run_libero10_task0_comparison.sh summarize-medium
 
@@ -788,13 +846,21 @@ case "${command_name}" in
         [[ $# -eq 2 ]] || { usage; exit 2; }
         run_steam_medium "$2"
         ;;
+    steam-medium-value-smoke)
+        [[ $# -eq 2 ]] || { usage; exit 2; }
+        run_steam_medium_value_smoke "$2"
+        ;;
+    steam-medium-replication)
+        [[ $# -eq 3 ]] || { usage; exit 2; }
+        run_steam_medium_replication "$2" "$3"
+        ;;
     eval-medium)
         if [[ "${2:-}" == "baseline" ]]; then
             [[ $# -eq 3 ]] || { usage; exit 2; }
             run_eval "$2" "$3" medium
         else
-            [[ $# -eq 4 ]] || { usage; exit 2; }
-            run_eval "$2" "$3" medium "$4"
+            [[ $# -eq 4 || $# -eq 5 ]] || { usage; exit 2; }
+            run_eval "$2" "$3" medium "$4" "${5:-$3}"
         fi
         ;;
     medium)

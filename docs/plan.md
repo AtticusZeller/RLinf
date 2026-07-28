@@ -4,6 +4,16 @@
 
 <!-- 新条目追加到本行下方，保持最新在最上 -->
 
+## STEAM Medium · seed 1 两卡复现
+
+- 使用与历史 Medium 相同的 30 条 SFT 和固定清单中的 256 条 rollout，仅改变训练
+  seed 为 1。
+- baseline、STEAM step 500 和 step 1,000 统一固定 eval seed 0；不同训练 seed 的
+  评测日志写入独立 `eval-seed-0/` 路径。
+- 两卡执行 500-step ensemble value、advantage、1,000-step CFG 和两档各 100 回合
+  评测；本轮不重复 RECAP。
+- 两卡 2-step value smoke 已完成并保存 checkpoint；正式结果待根工作区启动和归档。
+
 ## RECAP / STEAM · LIBERO-10 Task 0 Medium
 
 - 新建 ``docs/experiment-log.md``，集中记录实验假设、配置、W&B、产物、结果与结论；``docs/log.md`` 继续只记录已验证的开发任务。

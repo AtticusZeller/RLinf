@@ -49,6 +49,7 @@ def summarize(
     expected_trajectories: int = 100,
     methods_to_summarize: tuple[str, ...] = ("baseline", "recap", "steam"),
     baseline_seed: int = 0,
+    eval_seed: int | None = None,
 ) -> dict[str, object]:
     """Build per-seed and aggregate success-rate results."""
     results: dict[str, object] = {
@@ -66,7 +67,10 @@ def summarize(
         total_successes = 0
         total_trajectories = 0
         for seed in method_seeds:
-            log_path = root / f"seed-{seed}" / method / "eval.log"
+            log_root = root / f"seed-{seed}" / method
+            if eval_seed is not None and eval_seed != seed:
+                log_root /= f"eval-seed-{eval_seed}"
+            log_path = log_root / "eval.log"
             if not log_path.is_file():
                 raise FileNotFoundError(f"Missing evaluation log: {log_path}")
             success_rate = parse_metric(log_path, SUCCESS_PATTERN, "eval/success_once")
@@ -134,7 +138,9 @@ def main() -> None:
     parser.add_argument("root", type=Path)
     parser.add_argument("--seeds", type=int, nargs="+", default=[0])
     parser.add_argument("--baseline-seed", type=int, default=0)
+    parser.add_argument("--eval-seed", type=int)
     parser.add_argument("--expected-trajectories", type=int, default=100)
+    parser.add_argument("--output", type=Path)
     parser.add_argument(
         "--methods",
         nargs="+",
@@ -148,8 +154,9 @@ def main() -> None:
         expected_trajectories=args.expected_trajectories,
         methods_to_summarize=tuple(args.methods),
         baseline_seed=args.baseline_seed,
+        eval_seed=args.eval_seed,
     )
-    output_path = args.root / "summary.json"
+    output_path = args.output or args.root / "summary.json"
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(
         json.dumps(results, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"

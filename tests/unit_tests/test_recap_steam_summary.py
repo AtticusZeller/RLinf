@@ -18,8 +18,11 @@ def _write_eval_log(
     method: str,
     success: float,
     trajectories: int = 100,
+    eval_seed: int | None = None,
 ) -> None:
     log_dir = root / f"seed-{seed}" / method
+    if eval_seed is not None and eval_seed != seed:
+        log_dir /= f"eval-seed-{eval_seed}"
     log_dir.mkdir(parents=True)
     (log_dir / "eval.log").write_text(
         "INFO {'eval/success_once': array("
@@ -79,3 +82,24 @@ def test_summarize_rejects_incomplete_evaluation(tmp_path: Path) -> None:
             [0],
             methods_to_summarize=("recap",),
         )
+
+
+def test_summarize_training_seed_on_fixed_evaluation_seed(tmp_path: Path) -> None:
+    _write_eval_log(tmp_path, 0, "baseline", 0.4)
+    _write_eval_log(tmp_path, 1, "steam_step500", 0.6, eval_seed=0)
+    _write_eval_log(tmp_path, 1, "steam_step1000", 0.7, eval_seed=0)
+
+    results = MODULE.summarize(
+        tmp_path,
+        [1],
+        methods_to_summarize=("baseline", "steam_step500", "steam_step1000"),
+        baseline_seed=0,
+        eval_seed=0,
+    )
+
+    assert results["methods"]["steam_step500"]["delta_vs_baseline_pp"] == pytest.approx(
+        20.0
+    )
+    assert results["methods"]["steam_step1000"][
+        "delta_vs_baseline_pp"
+    ] == pytest.approx(30.0)

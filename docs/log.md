@@ -4,6 +4,15 @@
 
 <!-- 每个任务通过全部必要验证后，在本行下方追加一条 -->
 
+## 2026-07-28 · 增加 STEAM Medium 固定评测 seed 复现入口
+
+- medium 评测支持训练 seed 与 eval seed 分离，并将不同 eval seed 的日志隔离到
+  `eval-seed-<seed>/`；汇总器同步支持该目录结构和显式输出路径。
+- 新增 `steam-medium-replication <train-seed> <eval-seed>` 与两步 value smoke
+  入口；seed 1 正式流程固定使用 eval seed 0。
+- 两张 H20 上的 value smoke 完成 2 个真实优化步并保存 checkpoint；shell 语法、
+  Ruff 和 5 项针对性测试通过。该 smoke 仅证明工程可运行，不代表算法收益。
+
 ## 2026-07-25 · 归档 RECAP / STEAM 实验资源账本
 
 - 通过 W&B ``system`` 流回填 Medium 实验的实际时长、监测 GPU 数、峰值显存、
