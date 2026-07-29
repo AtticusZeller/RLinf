@@ -14,19 +14,24 @@
 - **运行证据：** W&B 链接、日志、checkpoint、汇总文件和实际耗时。
 - **结果与结论：** 成功率、相对 baseline、异常和下一步；未完成时明确标记状态。
 
-## 2026-07-28 · STEAM Medium · seed 1 两卡复现
+## 2026-07-29 · STEAM Medium · seed 1 两卡复现
 
-- **状态：** 启动前工程验证完成，正式结果待运行。
+- **状态：** 完成。正式 run `20260728-094321__libero10-task0-medium-steam-seed1-2gpu`
+  已完成 baseline、STEAM value、advantage、CFG 和两档评测。
 - **目标与假设：** 在固定 eval seed 0 和相同 Medium 数据、预算下，将 STEAM
   训练 seed 从 0 改为 1，检查历史 step 500 的正向收益是否至少具有第二个训练
   seed 的方向性复现。
 - **数据与配置：** 30 条 SFT、固定清单中的 256 条 rollout、500-step ensemble
   value、1,000-step CFG；baseline 与 step 500/1,000 各评测 100 回合。
-- **工程证据：** 两张 H20 的 2-step value smoke 正常结束并保存 checkpoint；
+- **工程证据：** 两张 H20 的 2-step value smoke 正常结束并保存 checkpoint；正式
+  两卡 run 的 W&B 为 baseline `dsj2xjay`、value `pvious9w`、step 500 eval
+  `ljh0y3rr`、step 1,000 eval `um33wjj3`。
   W&B <https://wandb.ai/atticux/rlinf/runs/n28avawi>。首次启动因 Ray worker
   触发 uv 环境同步而在进入优化前中断，固定 `/root/RLinf/.venv` 并禁用启动期
   uv sync 后通过。
-- **结果与结论：** Pending；smoke 不计入算法结果。
+- **结果与结论：** 固定 eval seed 0、每项 100 回合：baseline 40%，STEAM step
+  500 为 51%（+11 pp），step 1,000 为 66%（+26 pp）。这支持继续扩展 STEAM
+  训练 seed，但仍只是单任务、单训练 seed 的方向性证据；smoke 不计入算法结果。
 
 ## 2026-07-15 · RECAP / STEAM · LIBERO-10 Task 0 Medium
 

@@ -12,7 +12,9 @@
   评测日志写入独立 `eval-seed-0/` 路径。
 - 两卡执行 500-step ensemble value、advantage、1,000-step CFG 和两档各 100 回合
   评测；本轮不重复 RECAP。
-- 两卡 2-step value smoke 已完成并保存 checkpoint；正式结果待根工作区启动和归档。
+- 两卡 2-step value smoke 已完成并保存 checkpoint；正式 run 已归档：baseline 40%、
+  STEAM step 500 为 51%、step 1,000 为 66%，每项 100 回合。结果仍需更多训练
+  seed 和 benchmark 才能判断稳定性。
 
 ## RECAP / STEAM · LIBERO-10 Task 0 Medium
 
