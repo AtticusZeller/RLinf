@@ -1,0 +1,38 @@
+runner:
+  logger:
+    log_path: "/mnt/data/atticux/vla-post-train/rlinf/rlt-maniskill/smoke/stage2-unlimited"
+    experiment_name: "stage2-upstream-unlimited-smoke"
+  max_epochs: 1
+  max_run_duration: "0:00:30:00"
+  val_check_interval: 1
+  save_interval: -1
+
+algorithm:
+  update_epoch: 1
+  rlt_schedule:
+    max_updates_per_train_step: 4
+    warmup_min_size: 16
+    warmup_post_collect_updates: 2
+    train_every_transitions: 1
+  actor_weight_schedule:
+    enable: False
+  replay_buffer:
+    cache_size: 32
+    sample_window_size: 32
+    max_num_samples: 64
+    min_buffer_size: 8
+  train_actor_steps: 16
+  critic_actor_ratio: 2
+
+env:
+  train:
+    total_num_envs: 8
+    max_episode_steps: 50
+    max_steps_per_rollout_epoch: 20
+  eval:
+    total_num_envs: 8
+    max_episode_steps: 50
+    max_steps_per_rollout_epoch: 10
+    video_cfg:
+      save_video: True
+      max_envs: 4

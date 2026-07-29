@@ -14,6 +14,8 @@
 
 import numbers
 import os
+import shutil
+import tempfile
 import warnings
 from concurrent.futures import Future, ThreadPoolExecutor
 from typing import Any, Optional
@@ -76,6 +78,10 @@ class RecordVideo(gym.Wrapper):
         self.render_images: list[np.ndarray] = []
         self.video_cnt = 0
         self._num_envs = getattr(env, "num_envs", 1)
+        max_envs = video_cfg.get("max_envs")
+        self._max_envs = int(max_envs) if max_envs is not None else None
+        if self._max_envs is not None and self._max_envs <= 0:
+            raise ValueError("video_cfg.max_envs must be greater than zero")
         self._executor = ThreadPoolExecutor(max_workers=1)
         self._save_futures: list[Future] = []
 
@@ -314,6 +320,8 @@ class RecordVideo(gym.Wrapper):
         """Overlay info (optional) and append a tiled frame."""
         if not images:
             return
+        if self._max_envs is not None:
+            images = images[: self._max_envs]
         if self.video_cfg.get("info_on_video", True):
             images = [
                 put_info_on_image(
@@ -475,15 +483,23 @@ class RecordVideo(gym.Wrapper):
     def _save_video(self, frames: list[np.ndarray], mp4_path: str) -> None:
         """Save frames to disk (runs in background)."""
         video_writer = None
+        file_descriptor, local_path = tempfile.mkstemp(suffix=".mp4")
+        os.close(file_descriptor)
         try:
-            video_writer = imageio.get_writer(mp4_path, fps=self._fps)
+            # MP4 finalization seeks backward to write its moov atom. Some
+            # persistent FUSE mounts do not support that operation reliably.
+            video_writer = imageio.get_writer(local_path, fps=self._fps)
             for img in frames:
                 video_writer.append_data(img)
+            video_writer.close()
+            video_writer = None
+            shutil.copyfile(local_path, mp4_path)
         except Exception as exc:
             warnings.warn(f"Failed to save video {mp4_path}: {exc}")
         finally:
             if video_writer is not None:
                 video_writer.close()
+            os.unlink(local_path)
 
     def _prune_futures(self) -> None:
         """Remove finished futures to avoid unbounded growth."""
