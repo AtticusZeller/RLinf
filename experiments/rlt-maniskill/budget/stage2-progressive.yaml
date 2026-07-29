@@ -1,0 +1,37 @@
+runner:
+  logger:
+    log_path: "/mnt/data/atticux/vla-post-train/rlinf/rlt-maniskill/stage2-progressive"
+    project_name: rlt-maniskill
+    experiment_name: "stage2-progressive"
+    wandb_entity: atticux
+    logger_backends: ["wandb"]
+  max_epochs: 100
+  val_check_interval: 20
+  save_interval: 20
+
+algorithm:
+  rlt_schedule:
+    # Reach online control within a medium-budget run while retaining the
+    # upstream update cadence and actor objective.
+    warmup_min_size: 5000
+    warmup_post_collect_updates: 10000
+
+env:
+  train:
+    rlt_policy_switch:
+      expert_takeover:
+        enable: True
+  eval:
+    total_num_envs: 64
+    video_cfg:
+      save_video: True
+      fps: 10
+      max_envs: 4
+      video_base_dir: ${runner.logger.log_path}/video/eval
+
+rollout:
+  expert_model:
+    model_path: "/mnt/data/atticux/rlt-maniskill/runs/full/stage1/stage1-full/checkpoints/global_step_2000/actor"
+    precision: null
+    openpi:
+      use_rlt: False
