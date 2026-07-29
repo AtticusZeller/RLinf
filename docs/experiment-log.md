@@ -14,6 +14,25 @@
 - **运行证据：** W&B 链接、日志、checkpoint、汇总文件和实际耗时。
 - **结果与结论：** 成功率、相对 baseline、异常和下一步；未完成时明确标记状态。
 
+## 2026-07-29 · RL Token ManiSkill · 12 小时运行复核
+
+- **状态：** 预算中断；不是完整在线 RLT 结果。正式 run
+  ``20260727-070549__rlt-maniskill-stage2-12h-seed2026`` 保留 step
+  25/50/75/87 checkpoint。
+- **关键诊断：** 最终 learner ``update_step=25,200``，低于配置的
+  ``warmup_post_collect_updates=30,000``；W&B 和本地日志均显示
+  ``ready_for_online=0``。actor 尚未在自动 critical phase 接管，因此此前
+  59%–80% 的成功率波动主要反映 base VLA 路线。
+- **最终评测：** 固定 64 条轨迹的 ``eval/success_once=0.671875``、
+  ``eval/reward=0.010207``、``eval/episode_len=211.265625``。这些值只描述
+  warmup 内的中断点，不能用于判断 RL Token 是否提升或是否平台。
+- **恢复边界：** step 87 保存了模型、优化器、target model 和 38,852 条 replay
+  transition，但当前 checkpoint 没有持久化 worker ``update_step``。直接
+  ``resume_dir`` 会重置 learner gate，因此不作为正式续跑入口。
+- **下一步：** 复用 upstream 同款 2,000-step Stage 1，从头运行无墙钟限制的
+  upstream-aligned Stage 2；跨过 30,000 updates 且观测
+  ``ready_for_online=1``、``actor_switch_rate>0`` 后再评价收益。
+
 ## 2026-07-29 · STEAM Medium · seed 1 两卡复现
 
 - **状态：** 完成。正式 run `20260728-094321__libero10-task0-medium-steam-seed1-2gpu`
@@ -32,6 +51,8 @@
 - **结果与结论：** 固定 eval seed 0、每项 100 回合：baseline 40%，STEAM step
   500 为 51%（+11 pp），step 1,000 为 66%（+26 pp）。这支持继续扩展 STEAM
   训练 seed，但仍只是单任务、单训练 seed 的方向性证据；smoke 不计入算法结果。
+  当前在 1,000-step CFG 预算处收尾并释放两张卡。论文使用 30,000-step policy
+  optimization，因此本实验不声称已经收敛或继续训练不会提升。
 
 ## 2026-07-15 · RECAP / STEAM · LIBERO-10 Task 0 Medium
 

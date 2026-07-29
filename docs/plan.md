@@ -4,6 +4,19 @@
 
 <!-- 新条目追加到本行下方，保持最新在最上 -->
 
+## RL Token · ManiSkill 无时限 Stage 2
+
+- 复用已完成的 Stage 1 ``global_step_2000/actor``；该步数与 RLinf 上游
+  ManiSkill 示例一致，不重复训练 Stage 1。
+- 上一轮 12 小时运行结束时 learner ``update_step=25,200``，低于
+  ``warmup_post_collect_updates=30,000``，``ready_for_online=0``；因此
+  67.2% 最终评测不能解释为在线 actor 的平台期。
+- 新 Stage 2 从头按 RLinf 上游 ManiSkill 配置运行，恢复 256 个固定评测环境和
+  simulated expert takeover，取消墙钟限制；正式结论只使用跨过 30,000 updates
+  后、actor 确实接管的评测。
+- 评测保留完整成功率统计，同时仅将固定子集拼接为 MP4，避免录像 I/O 改变算法
+  训练配置。
+
 ## STEAM Medium · seed 1 两卡复现
 
 - 使用与历史 Medium 相同的 30 条 SFT 和固定清单中的 256 条 rollout，仅改变训练
@@ -15,6 +28,9 @@
 - 两卡 2-step value smoke 已完成并保存 checkpoint；正式 run 已归档：baseline 40%、
   STEAM step 500 为 51%、step 1,000 为 66%，每项 100 回合。结果仍需更多训练
   seed 和 benchmark 才能判断稳定性。
+- 当前实验在 1,000-step CFG 预算处收尾，不继续占用两卡。论文的 policy
+  optimization 使用 30,000 steps，因此本结果应表述为预算受限的正向验证，不能
+  表述为已经训练饱和。
 
 ## RECAP / STEAM · LIBERO-10 Task 0 Medium
 

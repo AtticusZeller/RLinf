@@ -13,6 +13,7 @@ docs/build
 dist
 logs/*
 outputs/*
+/examples/offline_rl/advantage_labeling/steam/process/outputs/
 *.so
 .venv
 .docs-venv

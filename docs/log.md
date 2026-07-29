@@ -4,6 +4,17 @@
 
 <!-- 每个任务通过全部必要验证后，在本行下方追加一条 -->
 
+## 2026-07-29 · 核验 RL Token warmup 状态并收尾 STEAM
+
+- W&B run ``umh3vuuo`` 与本地 metrics 一致：上一轮结束于 global step 87，
+  learner ``update_step=25,200``、``ready_for_online=0``，尚未达到上游
+  ``warmup_post_collect_updates=30,000``；此前“效果一般”的判断不成立。
+- 对照 RLinf upstream ManiSkill 示例确认 Stage 1 的 2,000 steps 和 Stage 2
+  主要算法参数已经对齐；上一轮的主要缩量是 12 小时墙钟、64-env eval 和关闭
+  simulated expert takeover。
+- STEAM seed 1 保留 baseline 40%、step 500 51%、step 1,000 66% 的方向性结果；
+  当前在 1,000 steps 收尾，明确区别于论文 30,000-step policy 训练预算。
+
 ## 2026-07-28 · 增加 STEAM Medium 固定评测 seed 复现入口
 
 - medium 评测支持训练 seed 与 eval seed 分离，并将不同 eval seed 的日志隔离到
