@@ -62,6 +62,8 @@ export RLINF_PI05_MODEL_PATH="${RLINF_PI05_MODEL_PATH:-/mnt/data/atticux/rlinf/m
 export RLINF_RECAP_SIGLIP_PATH="${RLINF_RECAP_SIGLIP_PATH:-/mnt/data/atticux/rlinf/models/siglip2-so400m-patch14-224}"
 export RLINF_STEAM_SIGLIP_PATH="${RLINF_STEAM_SIGLIP_PATH:-/mnt/data/atticux/rlinf/models/siglip-so400m-patch14-384}"
 export RLINF_GEMMA_PATH="${RLINF_GEMMA_PATH:-/mnt/data/atticux/rlinf/models/gemma-3-270m}"
+STEAM_MEDIUM_RESUME_DIR="${RLINF_STEAM_MEDIUM_RESUME_DIR:-}"
+STEAM_MEDIUM_BASELINE_ROOT="${RLINF_STEAM_MEDIUM_BASELINE_ROOT:-}"
 HF_STAGING_ROOT="${RLINF_HF_STAGING_ROOT:-${HOME}/.cache/rlinf-hf-stage}"
 
 detect_nproc() {
@@ -598,6 +600,7 @@ run_eval() {
     local training_root
     local run_root
     local config_name
+    local policy_dir
     local policy_checkpoint
 
     validate_seed "${seed}"
@@ -616,7 +619,7 @@ run_eval() {
             echo "Method must be baseline, recap, or steam; got: ${method}" >&2
             exit 2
         fi
-    elif [[ "${profile}" == "medium" ]]; then
+    elif [[ "${profile}" == "medium" || "${profile}" == "medium-continuation" ]]; then
         check_medium_assets
         if [[ "${method}" == "baseline" ]]; then
             [[ -z "${checkpoint_step}" ]] || {
@@ -626,14 +629,27 @@ run_eval() {
             run_root="${MEDIUM_EXPERIMENT_ROOT}/seed-${seed}/baseline"
             config_name="libero_10_task0_mvp_openpi_pi05_eval"
         elif [[ "${method}" == "recap" || "${method}" == "steam" ]]; then
-            if [[ "${checkpoint_step}" != "500" && "${checkpoint_step}" != "1000" ]]; then
-                echo "Medium checkpoint step must be 500 or 1000, got: ${checkpoint_step}" >&2
-                exit 2
+            if [[ "${profile}" == "medium" ]]; then
+                if [[ "${checkpoint_step}" != "500" && "${checkpoint_step}" != "1000" ]]; then
+                    echo "Medium checkpoint step must be 500 or 1000, got: ${checkpoint_step}" >&2
+                    exit 2
+                fi
+                policy_dir="${method}-medium-policy"
+            else
+                if [[ "${method}" != "steam" ]]; then
+                    echo "Medium continuation only supports STEAM, got: ${method}" >&2
+                    exit 2
+                fi
+                if [[ "${checkpoint_step}" != "3000" && "${checkpoint_step}" != "5000" && "${checkpoint_step}" != "10000" ]]; then
+                    echo "Medium continuation checkpoint must be 3000, 5000, or 10000; got: ${checkpoint_step}" >&2
+                    exit 2
+                fi
+                policy_dir="steam-medium-policy-continued"
             fi
             training_root="${MEDIUM_EXPERIMENT_ROOT}/seed-${seed}/${method}"
             run_root="${MEDIUM_EXPERIMENT_ROOT}/seed-${seed}/${method}_step${checkpoint_step}"
             config_name="libero_10_task0_mvp_cfg_pi05_eval"
-            policy_checkpoint="${training_root}/${method}-medium-policy/checkpoints/global_step_${checkpoint_step}/actor/model_state_dict/full_weights.pt"
+            policy_checkpoint="${training_root}/${policy_dir}/checkpoints/global_step_${checkpoint_step}/actor/model_state_dict/full_weights.pt"
             require_file "${policy_checkpoint}"
         else
             echo "Method must be baseline, recap, or steam; got: ${method}" >&2
@@ -710,6 +726,20 @@ summarize_steam_medium_replication() {
         --output "${MEDIUM_EXPERIMENT_ROOT}/summary.json"
 }
 
+summarize_steam_medium_continuation() {
+    local eval_seed="$2"
+    local train_seed="$1"
+
+    python "${SCRIPT_DIR}/summarize_libero10_task0.py" \
+        "${MEDIUM_EXPERIMENT_ROOT}" \
+        --seeds "${train_seed}" \
+        --baseline-seed "${eval_seed}" \
+        --eval-seed "${eval_seed}" \
+        --expected-trajectories 100 \
+        --methods baseline steam_step3000 steam_step5000 steam_step10000 \
+        --output "${MEDIUM_EXPERIMENT_ROOT}/summary.json"
+}
+
 run_mvp() {
     run_eval baseline 0 mvp
     run_recap_mvp 0
@@ -748,6 +778,73 @@ run_steam_medium_replication() {
     summarize_steam_medium_replication "${train_seed}" "${eval_seed}"
 }
 
+run_steam_medium_continuation() {
+    local baseline_source
+    local baseline_target
+    local checkpoint
+    local eval_log
+    local eval_seed="$2"
+    local output_root
+    local resume_dir
+    local target_step
+    local train_seed="$1"
+
+    validate_seed "${train_seed}"
+    validate_seed "${eval_seed}"
+    stage_medium_data
+    check_medium_assets
+    if [[ -z "${STEAM_MEDIUM_RESUME_DIR}" ]]; then
+        echo "RLINF_STEAM_MEDIUM_RESUME_DIR must point to a global_step_1000 checkpoint." >&2
+        exit 2
+    fi
+    if [[ -z "${STEAM_MEDIUM_BASELINE_ROOT}" ]]; then
+        echo "RLINF_STEAM_MEDIUM_BASELINE_ROOT must contain seed-${eval_seed}/baseline/eval.log." >&2
+        exit 2
+    fi
+    require_dir "${STEAM_MEDIUM_RESUME_DIR}/actor"
+    require_file "${STEAM_MEDIUM_RESUME_DIR}/actor/dcp_checkpoint/.metadata"
+
+    baseline_source="${STEAM_MEDIUM_BASELINE_ROOT}/seed-${eval_seed}/baseline/eval.log"
+    baseline_target="${MEDIUM_EXPERIMENT_ROOT}/seed-${eval_seed}/baseline/eval.log"
+    require_file "${baseline_source}"
+    mkdir -p "$(dirname "${baseline_target}")"
+    if [[ ! -f "${baseline_target}" ]]; then
+        cp -a "${baseline_source}" "${baseline_target}"
+    fi
+
+    export RLINF_EXPERIMENT_SEED="${train_seed}"
+    output_root="${MEDIUM_EXPERIMENT_ROOT}/seed-${train_seed}/steam"
+    mkdir -p "${output_root}"
+    resume_dir="${STEAM_MEDIUM_RESUME_DIR}"
+
+    for target_step in 3000 5000 10000; do
+        checkpoint="${output_root}/steam-medium-policy-continued/checkpoints/global_step_${target_step}"
+        if [[ ! -f "${checkpoint}/actor/model_state_dict/full_weights.pt" ]]; then
+            bash "${SCRIPT_DIR}/policy_optimization/cfg_rl/run_cfg_rl.sh" \
+                cfg_rl_openpi \
+                +experiment@_global_=steam_libero10_task0_medium_cfg \
+                "runner.logger.log_path=${output_root}" \
+                "runner.logger.experiment_name=steam-medium-policy-continued" \
+                "+runner.resume_dir=${resume_dir}" \
+                "runner.max_steps=${target_step}" \
+                "runner.save_interval=${target_step}" \
+                "actor.optim.total_training_steps=10000"
+        else
+            echo "Reusing STEAM continuation checkpoint: ${checkpoint}"
+        fi
+        require_file "${checkpoint}/actor/model_state_dict/full_weights.pt"
+        resume_dir="${checkpoint}"
+
+        eval_log="${MEDIUM_EXPERIMENT_ROOT}/seed-${train_seed}/steam_step${target_step}/eval-seed-${eval_seed}/eval.log"
+        if [[ -f "${eval_log}" ]] && grep -q "'eval/num_trajectories': 100" "${eval_log}"; then
+            echo "Reusing completed STEAM step ${target_step} evaluation: ${eval_log}"
+        else
+            run_eval steam "${train_seed}" medium-continuation "${target_step}" "${eval_seed}"
+        fi
+    done
+    summarize_steam_medium_continuation "${train_seed}" "${eval_seed}"
+}
+
 run_full() {
     local seed
     for seed in ${RLINF_FULL_SEEDS:-0 1 2}; do
@@ -777,7 +874,9 @@ Medium experiment commands:
   run_libero10_task0_comparison.sh steam-medium <seed>
   run_libero10_task0_comparison.sh steam-medium-value-smoke <seed>
   run_libero10_task0_comparison.sh steam-medium-replication <train-seed> <eval-seed>
+  run_libero10_task0_comparison.sh steam-medium-continuation <train-seed> <eval-seed>
   run_libero10_task0_comparison.sh eval-medium <baseline|recap|steam> <train-seed> [500|1000] [eval-seed]
+  run_libero10_task0_comparison.sh eval-medium-continuation steam <train-seed> <3000|5000|10000> <eval-seed>
   run_libero10_task0_comparison.sh medium
   run_libero10_task0_comparison.sh summarize-medium
 
@@ -794,7 +893,8 @@ Environment overrides:
   RLINF_RECAP_SIGLIP_PATH, RLINF_STEAM_SIGLIP_PATH, RLINF_GEMMA_PATH,
   RLINF_NPROC, RLINF_HF_MAX_WORKERS, RLINF_HF_STAGING_ROOT,
   RLINF_FULL_SEEDS, RLINF_VENV_PATH, RLINF_PYTHON_SHARED_LIB_DIR,
-  RLINF_OPEN_FILES_LIMIT
+  RLINF_OPEN_FILES_LIMIT, RLINF_STEAM_MEDIUM_RESUME_DIR,
+  RLINF_STEAM_MEDIUM_BASELINE_ROOT
 EOF
 }
 
@@ -854,6 +954,10 @@ case "${command_name}" in
         [[ $# -eq 3 ]] || { usage; exit 2; }
         run_steam_medium_replication "$2" "$3"
         ;;
+    steam-medium-continuation)
+        [[ $# -eq 3 ]] || { usage; exit 2; }
+        run_steam_medium_continuation "$2" "$3"
+        ;;
     eval-medium)
         if [[ "${2:-}" == "baseline" ]]; then
             [[ $# -eq 3 ]] || { usage; exit 2; }
@@ -862,6 +966,10 @@ case "${command_name}" in
             [[ $# -eq 4 || $# -eq 5 ]] || { usage; exit 2; }
             run_eval "$2" "$3" medium "$4" "${5:-$3}"
         fi
+        ;;
+    eval-medium-continuation)
+        [[ $# -eq 5 ]] || { usage; exit 2; }
+        run_eval "$2" "$3" medium-continuation "$4" "$5"
         ;;
     medium)
         [[ $# -eq 1 ]] || { usage; exit 2; }
