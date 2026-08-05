@@ -1,0 +1,44 @@
+runner:
+  logger:
+    log_path: "/mnt/data/atticux/vla-post-train/rlinf/rlt-maniskill/stage2-progressive-full"
+    project_name: rlt-maniskill
+    experiment_name: "stage2-progressive-full"
+    wandb_entity: atticux
+    logger_backends: ["wandb"]
+  # Prior progressive-100 run (jmqtnoox) crossed the online gate but stopped at
+  # rlt/update_step=35,600, short of warmup_updates(20000)+ramp_updates(50000)=70,000
+  # needed for actor_weight_ramp_progress to reach 1.0. update_step grows with total
+  # collected transitions (desired_total_updates tracked ~58k at step 100 already,
+  # capped per-step by max_updates_per_train_step=400), so scaling epochs scales
+  # update_step roughly linearly. 220 epochs keeps ~35 GPU-hours of margin above the
+  # ~186-epoch minimum implied by that cap so the run does not stop just under gate.
+  max_epochs: 220
+  val_check_interval: 20
+  save_interval: 20
+
+algorithm:
+  rlt_schedule:
+    # Reach online control within a medium-budget run while retaining the
+    # upstream update cadence and actor objective.
+    warmup_min_size: 5000
+    warmup_post_collect_updates: 10000
+
+env:
+  train:
+    rlt_policy_switch:
+      expert_takeover:
+        enable: True
+  eval:
+    total_num_envs: 64
+    video_cfg:
+      save_video: True
+      fps: 10
+      max_envs: 4
+      video_base_dir: ${runner.logger.log_path}/video/eval
+
+rollout:
+  expert_model:
+    model_path: "/mnt/data/atticux/rlt-maniskill/runs/full/stage1/stage1-full/checkpoints/global_step_2000/actor"
+    precision: null
+    openpi:
+      use_rlt: False

@@ -56,6 +56,11 @@ case "${1:-}" in
       --config-path "${experiment_dir}" --config-name stage2-full \
       +budget@_global_=stage2-progressive
     ;;
+  stage2-progressive-full)
+    python "${repo_dir}/examples/embodiment/train_embodied_agent.py" \
+      --config-path "${experiment_dir}" --config-name stage2-full \
+      +budget@_global_=stage2-progressive-full
+    ;;
   check)
     python - <<'PY'
 import pathlib
@@ -82,7 +87,7 @@ print(f'OpenPI: {openpi.__file__}')
 PY
     ;;
   *)
-    echo "Usage: $0 {check|stage1-smoke|stage2-smoke|stage1-full|stage2-full|stage2-learning-smoke|stage2-12h|stage2-unlimited|stage2-unlimited-smoke|stage2-progressive}" >&2
+    echo "Usage: $0 {check|stage1-smoke|stage2-smoke|stage1-full|stage2-full|stage2-learning-smoke|stage2-12h|stage2-unlimited|stage2-unlimited-smoke|stage2-progressive|stage2-progressive-full}" >&2
     exit 2
     ;;
 esac
